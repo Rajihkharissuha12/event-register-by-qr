@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import QRCode from "react-qr-code";
+import { saveToGoogleSheets } from "./actions/saveToSheet";
 
 export default function EventLanding() {
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -12,6 +13,7 @@ export default function EventLanding() {
     minutes: 0,
     seconds: 0,
   });
+  const [error, setError] = useState("");
 
   // Countdown Timer
   useEffect(() => {
@@ -37,22 +39,38 @@ export default function EventLanding() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
     const formData = new FormData(e.currentTarget);
     const data = {
       id: `REG${Date.now()}`,
-      name: formData.get("name"),
-      email: formData.get("email"),
-      phone: formData.get("phone"),
+      name: formData.get("name") as string,
+      email: formData.get("email") as string,
+      phone: formData.get("phone") as string,
     };
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      // Action 1: Simpan ke Google Sheets
+      const result = await saveToGoogleSheets(data);
 
-    setRegistrationData(data);
-    setIsSubmitted(true);
-    setIsLoading(false);
+      if (!result.success) {
+        setError("Gagal menyimpan data. Silakan coba lagi.");
+        setIsLoading(false);
+        return;
+      }
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
+      // Action 2: Generate QR Code & tampilkan
+      setRegistrationData(data);
+      setIsSubmitted(true);
+
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      console.error("Error:", error);
+      setError("Terjadi kesalahan. Silakan coba lagi.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const downloadQRCode = () => {
@@ -793,6 +811,14 @@ export default function EventLanding() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Show error message if any */}
+              {error && (
+                <div className="bg-red-50 border-l-4 border-red-500 p-4">
+                  <p className="text-red-700 text-sm">{error}</p>
+                </div>
+              )}
+
+              {/* Form fields */}
               <div>
                 <label
                   htmlFor="name"
@@ -805,7 +831,7 @@ export default function EventLanding() {
                   id="name"
                   name="name"
                   required
-                  className="w-full px-4 py-3 border-2 border-slate-200 focus:border-slate-900 focus:outline-none transition text-black"
+                  className="w-full px-4 py-3 border-2 border-slate-200 focus:border-slate-900 focus:outline-none transition"
                   placeholder="Masukkan nama lengkap"
                 />
               </div>
@@ -822,7 +848,7 @@ export default function EventLanding() {
                   id="email"
                   name="email"
                   required
-                  className="w-full px-4 py-3 border-2 border-slate-200 focus:border-slate-900 focus:outline-none transition text-black"
+                  className="w-full px-4 py-3 border-2 border-slate-200 focus:border-slate-900 focus:outline-none transition"
                   placeholder="nama@email.com"
                 />
               </div>
@@ -839,7 +865,7 @@ export default function EventLanding() {
                   id="phone"
                   name="phone"
                   required
-                  className="w-full px-4 py-3 border-2 border-slate-200 focus:border-slate-900 focus:outline-none transition text-black"
+                  className="w-full px-4 py-3 border-2 border-slate-200 focus:border-slate-900 focus:outline-none transition"
                   placeholder="08xxxxxxxxxx"
                 />
               </div>
@@ -873,12 +899,6 @@ export default function EventLanding() {
                   "Daftar & Dapatkan QR Code"
                 )}
               </button>
-
-              <p className="text-xs text-slate-500 text-center leading-relaxed">
-                Dengan mendaftar, kamu menyetujui kebijakan privasi kami.
-                <br />
-                QR Code akan dikirim ke email dan WhatsApp kamu.
-              </p>
             </form>
           </div>
         </div>
