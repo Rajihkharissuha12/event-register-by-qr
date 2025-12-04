@@ -1,0 +1,652 @@
+"use client";
+
+import { useState, FormEvent, ChangeEvent } from "react";
+import { PaymentResponse, MidtransResult } from "@/types/midtrans";
+import { saveToGoogleSheets } from "../actions/saveToSheet";
+
+interface FormData {
+  name: string;
+  email: string;
+  phone: string;
+}
+
+type TicketType = "regular" | "vip";
+interface RegistrationSectionProps {
+  onRegisterSuccess: (data: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    ticketType: "regular" | "vip";
+  }) => void;
+}
+
+export default function RegistrationSection({
+  onRegisterSuccess,
+}: RegistrationSectionProps) {
+  const [ticketType, setTicketType] = useState<TicketType>("regular");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [registrationData, setRegistrationData] = useState<any>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState<string>("");
+  const [showModal, setShowModal] = useState<boolean>(false);
+  const [formData, setFormData] = useState<FormData>({
+    name: "",
+    email: "",
+    phone: "",
+  });
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Process payment dengan Midtrans Snap
+  const processPayment = async (
+    type: TicketType,
+    amount: number
+  ): Promise<void> => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketType: type,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          amount: amount,
+        }),
+      });
+
+      const data: PaymentResponse = await response.json();
+
+      if (data.success && data.token) {
+        // Log redirect URL untuk referensi
+        console.log("=================================");
+        console.log(data);
+        console.log("ORDER ID:", data.orderId);
+        console.log("PAYMENT LINK:", data.redirectUrl);
+        console.log("=================================");
+
+        // Tampilkan Midtrans Snap Popup
+        window.snap.pay(data.token, {
+          onSuccess: async (result) => {
+            console.log("✅ Payment Success:", result);
+            const data = {
+              id: `REG${Date.now()}`,
+              name: formData.name,
+              email: formData.email,
+              phone: formData.phone,
+              ticketType: type,
+            };
+
+            const sheet = await saveToGoogleSheets(data);
+            if (!sheet.success) {
+              setError("Gagal menyimpan data. Silakan hubungi admin.");
+              return;
+            }
+
+            setShowModal(false);
+            setFormData({ name: "", email: "", phone: "" });
+
+            onRegisterSuccess(data); // trigger QR popup di parent
+          },
+          onPending: (result: MidtransResult) => {
+            console.log("⏳ Payment Pending:", result);
+            console.log("=================================");
+            console.log("📎 LINK PEMBAYARAN (simpan untuk nanti):");
+            console.log(data.redirectUrl);
+            console.log("=================================");
+
+            // Tampilkan alert dengan link
+            alert(
+              `Pembayaran pending!\n\nSimpan link berikut untuk melanjutkan pembayaran:\n${data.redirectUrl}`
+            );
+          },
+          onError: (result: MidtransResult) => {
+            console.log("❌ Payment Error:", result);
+            setError("Pembayaran gagal. Silakan coba lagi.");
+          },
+          onClose: () => {
+            console.log("🚪 Snap popup closed");
+            console.log("=================================");
+            console.log("📎 LINK PEMBAYARAN (jika belum selesai):");
+            console.log(data.redirectUrl);
+            console.log("=================================");
+
+            // Optional: Tampilkan modal dengan link pembayaran
+            const continuePayment = confirm(
+              `Pembayaran belum selesai.\n\nKlik OK untuk menyalin link pembayaran, atau Cancel untuk menutup.`
+            );
+
+            if (continuePayment && data.redirectUrl) {
+              // Copy ke clipboard
+              navigator.clipboard
+                .writeText(data.redirectUrl)
+                .then(() => {
+                  alert(
+                    "Link pembayaran berhasil disalin!\n\nBuka link tersebut untuk melanjutkan pembayaran."
+                  );
+                })
+                .catch(() => {
+                  // Fallback jika clipboard tidak tersedia
+                  prompt("Salin link pembayaran berikut:", data.redirectUrl);
+                });
+            }
+
+            setIsLoading(false);
+          },
+        });
+      } else {
+        setError(data.error || "Gagal memproses pembayaran");
+      }
+    } catch (err) {
+      console.error("Error:", err);
+      setError("Terjadi kesalahan. Silakan coba lagi.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegularCheckout = (e: FormEvent<HTMLFormElement>): void => {
+    e.preventDefault();
+    processPayment("regular", 300000);
+  };
+
+  const handleVipCheckout = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    const data = {
+      id: `VIP${Date.now()}`,
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      ticketType: "vip" as const,
+    };
+
+    try {
+      const sheet = await saveToGoogleSheets(data);
+      if (!sheet.success) {
+        setError("Gagal menyimpan data. Silakan coba lagi.");
+        return;
+      }
+
+      setFormData({ name: "", email: "", phone: "" });
+      onRegisterSuccess(data); // langsung QR
+    } catch (err) {
+      console.error(err);
+      setError("Terjadi kesalahan. Silakan coba lagi.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      id: `REG${Date.now()}`,
+      name: formData.get("name") as string,
+      email: formData.get("email") as string,
+      phone: formData.get("phone") as string,
+    };
+
+    try {
+      // Action 1: Simpan ke Google Sheets
+      const result = await saveToGoogleSheets(data);
+
+      if (!result.success) {
+        setError("Gagal menyimpan data. Silakan coba lagi.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Action 2: Generate QR Code & tampilkan
+      setRegistrationData(data);
+      setIsSubmitted(true);
+
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      console.error("Error:", error);
+      setError("Terjadi kesalahan. Silakan coba lagi.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <section id="register" className="py-20 px-4 bg-slate-900">
+        <div className="max-w-xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
+              Daftar Sekarang
+            </h2>
+            <p className="text-slate-400">
+              Pilih jenis tiket dan lengkapi pendaftaran
+            </p>
+          </div>
+
+          {/* Toggle Switch */}
+          <div className="flex justify-center mb-8">
+            <div className="bg-slate-800/50 p-1 rounded-full inline-flex">
+              <button
+                type="button"
+                onClick={() => setTicketType("regular")}
+                className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${
+                  ticketType === "regular"
+                    ? "bg-white text-slate-900 shadow-md"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                Reguler
+              </button>
+              <button
+                type="button"
+                onClick={() => setTicketType("vip")}
+                className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${
+                  ticketType === "vip"
+                    ? "bg-amber-500 text-slate-900 shadow-md"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                VIP
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          {ticketType === "regular" ? (
+            <TicketCard onBuyClick={() => setShowModal(true)} />
+          ) : (
+            <VipForm
+              formData={formData}
+              error={error}
+              isLoading={isLoading}
+              onInputChange={handleInputChange}
+              onSubmit={handleVipCheckout}
+            />
+          )}
+        </div>
+      </section>
+
+      {/* Modal Popup */}
+      {showModal && (
+        <ModalForm
+          formData={formData}
+          error={error}
+          isLoading={isLoading}
+          onClose={() => setShowModal(false)}
+          onInputChange={handleInputChange}
+          onSubmit={handleRegularCheckout}
+        />
+      )}
+    </>
+  );
+}
+
+// Ticket Card Component
+interface TicketCardProps {
+  onBuyClick: () => void;
+}
+
+function TicketCard({ onBuyClick }: TicketCardProps) {
+  const benefits = [
+    "Akses ke semua sesi materi",
+    "E-certificate kehadiran",
+    "Networking session",
+    "Snack & coffee break",
+  ];
+
+  return (
+    <div className="bg-white rounded-xl overflow-hidden shadow-2xl">
+      <div className="bg-slate-900 p-6 text-center">
+        <p className="text-amber-400 text-xs font-semibold tracking-widest mb-2">
+          SEMINAR EVENT 2025
+        </p>
+        <h3 className="text-2xl md:text-3xl font-bold text-white mb-1">
+          Tiket Reguler
+        </h3>
+        <p className="text-slate-400 text-sm">
+          Akses penuh ke seluruh rangkaian acara
+        </p>
+      </div>
+
+      <div className="relative h-4 bg-slate-100">
+        <div className="absolute -top-3 left-0 w-6 h-6 bg-slate-900 rounded-full"></div>
+        <div className="absolute -top-3 right-0 w-6 h-6 bg-slate-900 rounded-full"></div>
+        <div className="absolute top-1/2 left-8 right-8 border-t-2 border-dashed border-slate-300 -translate-y-1/2"></div>
+      </div>
+
+      <div className="p-6 md:p-8">
+        <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+          <div>
+            <p className="text-slate-500 text-xs uppercase mb-1">Tanggal</p>
+            <p className="text-slate-900 font-semibold">15 Januari 2025</p>
+          </div>
+          <div>
+            <p className="text-slate-500 text-xs uppercase mb-1">Waktu</p>
+            <p className="text-slate-900 font-semibold">09:00 - 17:00 WIB</p>
+          </div>
+          <div className="col-span-2">
+            <p className="text-slate-500 text-xs uppercase mb-1">Lokasi</p>
+            <p className="text-slate-900 font-semibold">
+              Grand Ballroom, Hotel XYZ Jakarta
+            </p>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-200 pt-5 mb-6 space-y-2.5">
+          {benefits.map((item, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-2 text-sm text-slate-700"
+            >
+              <svg
+                className="w-4 h-4 text-amber-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-slate-50 -mx-6 md:-mx-8 px-6 md:px-8 py-5 -mb-6 md:-mb-8 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-xs text-slate-500 uppercase">Harga Tiket</p>
+              <p className="text-3xl font-bold text-slate-900">Rp 300.000</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-slate-500">Kuota tersisa</p>
+              <p className="text-lg font-bold text-amber-600">127 / 500</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onBuyClick}
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3.5 rounded-lg transition"
+          >
+            Beli Tiket Sekarang
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// VIP Form Component
+interface FormProps {
+  formData: FormData;
+  error: string;
+  isLoading: boolean;
+  onInputChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
+}
+
+function VipForm({
+  formData,
+  error,
+  isLoading,
+  onInputChange,
+  onSubmit,
+}: FormProps) {
+  return (
+    <div className="bg-white rounded-xl shadow-2xl overflow-hidden">
+      <div className="bg-gradient-to-r from-amber-500 to-amber-400 p-6 text-center">
+        <p className="text-amber-900 text-xs font-semibold tracking-widest mb-1">
+          VIP ACCESS
+        </p>
+        <h3 className="text-2xl font-bold text-slate-900">Form Pendaftaran</h3>
+      </div>
+
+      <div className="p-6 md:p-8">
+        <form onSubmit={onSubmit} className="space-y-5">
+          {error && <ErrorMessage message={error} />}
+          <InputField
+            label="Nama Lengkap"
+            name="name"
+            type="text"
+            value={formData.name}
+            onChange={onInputChange}
+            placeholder="Masukkan nama lengkap"
+          />
+          <InputField
+            label="Email"
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={onInputChange}
+            placeholder="nama@email.com"
+          />
+          <InputField
+            label="Nomor WhatsApp"
+            name="phone"
+            type="tel"
+            value={formData.phone}
+            onChange={onInputChange}
+            placeholder="08xxxxxxxxxx"
+          />
+
+          <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-700 font-medium">Total:</span>
+              <span className="text-2xl font-bold text-slate-900">
+                Rp 299.000
+              </span>
+            </div>
+          </div>
+
+          <SubmitButton
+            isLoading={isLoading}
+            text="Bayar Sekarang"
+            className="bg-amber-500 hover:bg-amber-600 text-slate-900"
+          />
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Modal Form Component
+interface ModalFormProps extends FormProps {
+  onClose: () => void;
+}
+
+function ModalForm({
+  formData,
+  error,
+  isLoading,
+  onClose,
+  onInputChange,
+  onSubmit,
+}: ModalFormProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      ></div>
+
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="bg-slate-900 p-5 text-center relative">
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-4 right-4 text-slate-400 hover:text-white"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+          <p className="text-amber-400 text-xs font-semibold tracking-widest mb-1">
+            TIKET REGULER
+          </p>
+          <h3 className="text-xl font-bold text-white">Form Pembelian</h3>
+        </div>
+
+        <div className="p-6">
+          <form onSubmit={onSubmit} className="space-y-4">
+            {error && <ErrorMessage message={error} />}
+            <InputField
+              label="Nama Lengkap"
+              name="name"
+              type="text"
+              value={formData.name}
+              onChange={onInputChange}
+              placeholder="Masukkan nama lengkap"
+            />
+            <InputField
+              label="Email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={onInputChange}
+              placeholder="nama@email.com"
+            />
+            <InputField
+              label="Nomor WhatsApp"
+              name="phone"
+              type="tel"
+              value={formData.phone}
+              onChange={onInputChange}
+              placeholder="08xxxxxxxxxx"
+            />
+
+            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-900 font-semibold">
+                  Total Bayar
+                </span>
+                <span className="text-xl font-bold text-slate-900">
+                  Rp 300.000
+                </span>
+              </div>
+            </div>
+
+            <SubmitButton
+              isLoading={isLoading}
+              text="Lanjut ke Pembayaran"
+              className="bg-slate-900 hover:bg-slate-800 text-white"
+            />
+            <p className="text-xs text-center text-slate-500">
+              🔒 Pembayaran aman dengan Midtrans
+            </p>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Reusable Components
+interface InputFieldProps {
+  label: string;
+  name: string;
+  type: string;
+  value: string;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  placeholder: string;
+}
+
+function InputField({
+  label,
+  name,
+  type,
+  value,
+  onChange,
+  placeholder,
+}: InputFieldProps) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-1.5">
+        {label} <span className="text-red-500">*</span>
+      </label>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        required
+        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:border-slate-900 focus:ring-2 focus:ring-slate-100 focus:outline-none transition"
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
+
+interface SubmitButtonProps {
+  isLoading: boolean;
+  text: string;
+  className: string;
+}
+
+function SubmitButton({ isLoading, text, className }: SubmitButtonProps) {
+  return (
+    <button
+      type="submit"
+      disabled={isLoading}
+      className={`w-full font-semibold py-3.5 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+    >
+      {isLoading ? (
+        <span className="flex items-center justify-center gap-2">
+          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+              fill="none"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+          Memproses...
+        </span>
+      ) : (
+        text
+      )}
+    </button>
+  );
+}
+
+function ErrorMessage({ message }: { message: string }) {
+  return (
+    <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded">
+      <p className="text-red-700 text-sm">{message}</p>
+    </div>
+  );
+}

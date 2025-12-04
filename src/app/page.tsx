@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import QRCode from "react-qr-code";
 import { saveToGoogleSheets } from "./actions/saveToSheet";
+import RegistrationSection from "./components/RegistrationSection";
 
 export default function EventLanding() {
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -14,6 +15,8 @@ export default function EventLanding() {
     seconds: 0,
   });
   const [error, setError] = useState("");
+
+  const [ticketType, setTicketType] = useState("regular"); // 'regular' or 'vip'
 
   // Countdown Timer
   useEffect(() => {
@@ -35,43 +38,6 @@ export default function EventLanding() {
 
     return () => clearInterval(timer);
   }, []);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
-
-    const formData = new FormData(e.currentTarget);
-    const data = {
-      id: `REG${Date.now()}`,
-      name: formData.get("name") as string,
-      email: formData.get("email") as string,
-      phone: formData.get("phone") as string,
-    };
-
-    try {
-      // Action 1: Simpan ke Google Sheets
-      const result = await saveToGoogleSheets(data);
-
-      if (!result.success) {
-        setError("Gagal menyimpan data. Silakan coba lagi.");
-        setIsLoading(false);
-        return;
-      }
-
-      // Action 2: Generate QR Code & tampilkan
-      setRegistrationData(data);
-      setIsSubmitted(true);
-
-      // Scroll to top
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch (error) {
-      console.error("Error:", error);
-      setError("Terjadi kesalahan. Silakan coba lagi.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const downloadQRCode = () => {
     const svg = document.getElementById("qr-code");
@@ -746,6 +712,15 @@ export default function EventLanding() {
         </div>
       </section>
 
+      {/* Registration Section */}
+      <RegistrationSection
+        onRegisterSuccess={(data) => {
+          setRegistrationData(data);
+          setIsSubmitted(true);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+      />
+
       {/* FAQ Section */}
       <section className="py-20 px-4 bg-slate-50">
         <div className="max-w-4xl mx-auto">
@@ -790,116 +765,6 @@ export default function EventLanding() {
                 <p className="text-slate-600 leading-relaxed">{faq.a}</p>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Registration Section */}
-      <section id="register" className="py-20 px-4 bg-slate-900">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white p-8 md:p-12">
-            <div className="text-center mb-10">
-              <h2 className="text-4xl font-bold text-slate-900 mb-4">
-                Daftar Sekarang
-              </h2>
-              <p className="text-slate-600 text-lg mb-4">
-                Dapatkan QR Code untuk akses masuk event
-              </p>
-              <div className="inline-block border-2 border-amber-500 text-slate-900 px-6 py-2 font-semibold">
-                100% GRATIS • Terbatas 2000 Peserta
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Show error message if any */}
-              {error && (
-                <div className="bg-red-50 border-l-4 border-red-500 p-4">
-                  <p className="text-red-700 text-sm">{error}</p>
-                </div>
-              )}
-
-              {/* Form fields */}
-              <div>
-                <label
-                  htmlFor="name"
-                  className="block text-sm font-semibold text-slate-900 mb-2 uppercase tracking-wide"
-                >
-                  Nama Lengkap <span className="text-amber-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  required
-                  className="w-full px-4 py-3 border-2 border-slate-200 focus:border-slate-900 focus:outline-none transition"
-                  placeholder="Masukkan nama lengkap"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-semibold text-slate-900 mb-2 uppercase tracking-wide"
-                >
-                  Email <span className="text-amber-600">*</span>
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  required
-                  className="w-full px-4 py-3 border-2 border-slate-200 focus:border-slate-900 focus:outline-none transition"
-                  placeholder="nama@email.com"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="phone"
-                  className="block text-sm font-semibold text-slate-900 mb-2 uppercase tracking-wide"
-                >
-                  Nomor WhatsApp <span className="text-amber-600">*</span>
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  required
-                  className="w-full px-4 py-3 border-2 border-slate-200 focus:border-slate-900 focus:outline-none transition"
-                  placeholder="08xxxxxxxxxx"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-4 px-6 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wide"
-              >
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    Memproses...
-                  </span>
-                ) : (
-                  "Daftar & Dapatkan QR Code"
-                )}
-              </button>
-            </form>
           </div>
         </div>
       </section>
