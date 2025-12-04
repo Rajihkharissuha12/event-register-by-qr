@@ -310,7 +310,7 @@ function TicketCard({ onBuyClick }: TicketCardProps) {
   ];
 
   return (
-    <div className="bg-white rounded-xl overflow-hidden shadow-2xl">
+    <div className="bg-white rounded-xl overflow-hidden shadow-2xl border-4 border-white">
       <div className="bg-slate-900 p-6 text-center">
         <p className="text-amber-400 text-xs font-semibold tracking-widest mb-2">
           SEMINAR EVENT 2025
