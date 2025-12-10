@@ -137,7 +137,7 @@ export default function RegistrationSection({
             // console.info("=================================");
 
             // Tampilkan alert dengan link
-            alert(
+            setError(
               `Pembayaran pending!\n\nSimpan link berikut untuk melanjutkan pembayaran:\n${data.redirectUrl}`
             );
           },
