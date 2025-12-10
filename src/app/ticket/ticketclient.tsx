@@ -3,6 +3,7 @@
 import { Cuer } from "cuer";
 import { useMemo } from "react";
 import * as htmlToImage from "html-to-image";
+import { useSearchParams } from "next/navigation";
 
 function decodeTicketPayload(encoded: string | null) {
   if (!encoded) return null;
@@ -22,7 +23,9 @@ type TicketClientProps = {
   encoded: string; // base64 dari query d
 };
 
-export default function TicketClient({ encoded }: TicketClientProps) {
+export default function TicketPageClient() {
+  const searchParams = useSearchParams();
+  const encoded = searchParams.get("d") || "";
   const payload = useMemo(() => decodeTicketPayload(encoded), [encoded]);
 
   if (!payload) {
