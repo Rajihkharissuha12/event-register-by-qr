@@ -1,14 +1,11 @@
-import { useSearchParams } from "next/navigation";
+// src/app/ticket/page.tsx
 import { Suspense } from "react";
-import TicketClient from "./ticketclient";
+import TicketPageClient from "./ticketclient";
 
-export default function TicketPage() {
-  const searchParams = useSearchParams();
-  const encoded = searchParams.get("d") || "";
-
+export default function TicketPageWrapper() {
   return (
     <Suspense fallback={null}>
-      <TicketClient encoded={encoded} />
+      <TicketPageClient />
     </Suspense>
   );
 }

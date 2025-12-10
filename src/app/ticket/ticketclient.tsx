@@ -1,9 +1,10 @@
+// src/app/ticket/TicketPageClient.tsx
 "use client";
 
-import { Cuer } from "cuer";
-import { useMemo } from "react";
-import * as htmlToImage from "html-to-image";
 import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
+import { Cuer } from "cuer";
+import * as htmlToImage from "html-to-image";
 
 function decodeTicketPayload(encoded: string | null) {
   if (!encoded) return null;
@@ -18,10 +19,6 @@ function decodeTicketPayload(encoded: string | null) {
     return null;
   }
 }
-
-type TicketClientProps = {
-  encoded: string; // base64 dari query d
-};
 
 export default function TicketPageClient() {
   const searchParams = useSearchParams();
