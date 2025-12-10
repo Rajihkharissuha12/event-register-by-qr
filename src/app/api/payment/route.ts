@@ -60,7 +60,7 @@ export async function POST(
       orderId: orderId,
     });
   } catch (error) {
-    console.error("Midtrans Error:", error);
+    // console.error("Midtrans Error:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(

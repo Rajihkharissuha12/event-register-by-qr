@@ -28,7 +28,7 @@ export async function GET() {
 
     return NextResponse.json({ success: true, sponsors });
   } catch (err: any) {
-    console.error("GET_SPONSORS_ERROR", err);
+    // console.error("GET_SPONSORS_ERROR", err);
     return NextResponse.json(
       { success: false, error: err?.message || "Failed to fetch sponsors" },
       { status: 500 }

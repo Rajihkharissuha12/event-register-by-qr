@@ -113,7 +113,7 @@ export async function updateAttendanceStatus(registrationId: string) {
       },
     };
   } catch (error) {
-    console.error("Error updating attendance:", error);
+    // console.error("Error updating attendance:", error);
     return {
       success: false,
       error: "Gagal mengupdate status kehadiran",

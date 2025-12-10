@@ -43,7 +43,7 @@ export default function TicketPage() {
   const downloadQRCode = () => {
     const node = document.getElementById("qr-code");
     if (!node) {
-      console.error("QR wrapper tidak ditemukan");
+      // console.info("QR wrapper tidak ditemukan");
       return;
     }
 

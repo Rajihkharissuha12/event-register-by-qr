@@ -44,7 +44,7 @@ export default function ScannerPage() {
         // tidak perlu setResult.alreadyAttended lagi
       }
     } catch (err) {
-      console.error("Scan error:", err);
+      // console.error("Scan error:", err);
       setError("Format QR Code tidak valid");
     } finally {
       setIsProcessing(false);
@@ -90,7 +90,7 @@ export default function ScannerPage() {
                     handleScan(result[0].rawValue);
                   }
                 }}
-                onError={(error) => console.error(error)}
+                // onError={(error) => console.error(error)}
                 // containerStyle={{
                 //   width: "100%",
                 //   maxWidth: "500px",

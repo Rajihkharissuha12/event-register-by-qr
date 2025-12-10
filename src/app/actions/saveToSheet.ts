@@ -46,7 +46,7 @@ export async function saveToGoogleSheets(data: {
 
     return { success: true, data: response.data };
   } catch (error) {
-    console.error("Error saving to Google Sheets:", error);
+    // console.error("Error saving to Google Sheets:", error);
     return { success: false, error: "Failed to save data" };
   }
 }

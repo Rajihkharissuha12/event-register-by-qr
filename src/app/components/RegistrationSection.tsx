@@ -51,7 +51,7 @@ export default function RegistrationSection({
         const json = await res.json();
         if (json.success) setRegularCount(json.count);
       } catch (e) {
-        console.error(e);
+        // console.error(e);
       }
     };
 
@@ -93,16 +93,16 @@ export default function RegistrationSection({
 
       if (data.success && data.token) {
         // Log redirect URL untuk referensi
-        console.log("=================================");
-        console.log(data);
-        console.log("ORDER ID:", data.orderId);
-        console.log("PAYMENT LINK:", data.redirectUrl);
-        console.log("=================================");
+        // console.info("=================================");
+        // console.info(data);
+        // console.info("ORDER ID:", data.orderId);
+        // console.info("PAYMENT LINK:", data.redirectUrl);
+        // console.info("=================================");
 
         // Tampilkan Midtrans Snap Popup
         window.snap.pay(data.token, {
           onSuccess: async (result) => {
-            console.log("✅ Payment Success:", result);
+            // console.info("✅ Payment Success:", result);
 
             // 2) Simpan peserta reguler ke Sheets via API register-regular
             const res = await fetch("/api/register-reguler", {
@@ -118,7 +118,7 @@ export default function RegistrationSection({
             }
 
             const registered = json.data; // { id: 'REG1', name, email, ... }
-            console.log("CALL onRegisterSuccess with", registered);
+            // console.info("CALL onRegisterSuccess with", registered);
             onRegisterSuccess(registered); // sama pattern-nya dengan VIP
 
             setShowModal(false);
@@ -130,11 +130,11 @@ export default function RegistrationSection({
             });
           },
           onPending: (result: MidtransResult) => {
-            console.log("⏳ Payment Pending:", result);
-            console.log("=================================");
-            console.log("📎 LINK PEMBAYARAN (simpan untuk nanti):");
-            console.log(data.redirectUrl);
-            console.log("=================================");
+            // console.info("⏳ Payment Pending:", result);
+            // console.info("=================================");
+            // console.info("📎 LINK PEMBAYARAN (simpan untuk nanti):");
+            // console.info(data.redirectUrl);
+            // console.info("=================================");
 
             // Tampilkan alert dengan link
             alert(
@@ -142,15 +142,15 @@ export default function RegistrationSection({
             );
           },
           onError: (result: MidtransResult) => {
-            console.log("❌ Payment Error:", result);
+            // console.info("❌ Payment Error:", result);
             setError("Pembayaran gagal. Silakan coba lagi.");
           },
           onClose: () => {
-            console.log("🚪 Snap popup closed");
-            console.log("=================================");
-            console.log("📎 LINK PEMBAYARAN (jika belum selesai):");
-            console.log(data.redirectUrl);
-            console.log("=================================");
+            // console.info("🚪 Snap popup closed");
+            // console.info("=================================");
+            // console.info("📎 LINK PEMBAYARAN (jika belum selesai):");
+            // console.info(data.redirectUrl);
+            // console.info("=================================");
 
             // Optional: Tampilkan modal dengan link pembayaran
             const continuePayment = confirm(
@@ -179,15 +179,46 @@ export default function RegistrationSection({
         setError(data.error || "Gagal memproses pembayaran");
       }
     } catch (err) {
-      console.error("Error:", err);
+      // console.error("Error:", err);
       setError("Terjadi kesalahan. Silakan coba lagi.");
     } finally {
       setIsLoading(false);
     }
   };
 
+  const validateForm = () => {
+    // nama: hanya huruf dan spasi (minimal 2 karakter)
+    const nameRegex = /^[A-Za-z\s]{2,}$/;
+    if (!formData.name || !nameRegex.test(formData.name.trim())) {
+      setError("Nama hanya boleh berisi huruf dan spasi.");
+      return false;
+    }
+
+    // email: wajib dan harus email Google
+    const email = formData.email?.trim() || "";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email) || !email.endsWith("@gmail.com")) {
+      setError("Email harus email Google yang valid (contoh: nama@gmail.com).");
+      return false;
+    }
+
+    // nomor WA Indonesia: mulai 08 atau +628, hanya angka setelah prefix
+    const phone = formData.phone?.trim() || "";
+    const waRegex = /^(?:\+628|08)\d{8,12}$/;
+    if (!phone || !waRegex.test(phone)) {
+      setError(
+        "Nomor WhatsApp harus nomor Indonesia yang valid (contoh: 081234567890 atau +6281234567890)."
+      );
+      return false;
+    }
+
+    setError("");
+    return true;
+  };
+
   const handleRegularCheckout = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
+    if (!validateForm()) return;
     processPayment("regular", 300000);
   };
 
@@ -264,7 +295,7 @@ export default function RegistrationSection({
 
       onRegisterSuccess(json.data);
     } catch (err) {
-      console.error(err);
+      // console.error(err);
       setError("Terjadi kesalahan. Silakan coba lagi.");
     } finally {
       setIsLoading(false);
@@ -302,7 +333,7 @@ export default function RegistrationSection({
       // Scroll to top
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
-      console.error("Error:", error);
+      // console.error("Error:", error);
       setError("Terjadi kesalahan. Silakan coba lagi.");
     } finally {
       setIsLoading(false);
@@ -674,7 +705,7 @@ function InputField({
         value={value}
         onChange={onChange}
         required
-        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:border-slate-900 focus:ring-2 focus:ring-slate-100 focus:outline-none transition"
+        className="text-black w-full px-4 py-3 border border-slate-300 rounded-lg focus:border-slate-900 focus:ring-2 focus:ring-slate-100 focus:outline-none transition"
         placeholder={placeholder}
       />
     </div>

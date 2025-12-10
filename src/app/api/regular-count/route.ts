@@ -29,7 +29,7 @@ export async function GET() {
 
     return NextResponse.json({ success: true, count: regularCount });
   } catch (err: any) {
-    console.error("REGULAR_COUNT_ERROR", err);
+    // console.error("REGULAR_COUNT_ERROR", err);
     return NextResponse.json(
       { success: false, error: err?.message || "Failed to get regular count" },
       { status: 500 }

@@ -63,7 +63,7 @@ export async function POST(req: Request) {
       kuota,
     });
   } catch (err: any) {
-    console.error("SPONSOR_PACKAGE_ERROR", err);
+    // console.error("SPONSOR_PACKAGE_ERROR", err);
     return NextResponse.json(
       {
         success: false,

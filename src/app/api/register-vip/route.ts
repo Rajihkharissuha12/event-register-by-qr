@@ -104,7 +104,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, data });
   } catch (err) {
-    console.error(err);
+    // console.error(err);
     return NextResponse.json(
       { success: false, error: "Failed to register VIP" },
       { status: 500 }
