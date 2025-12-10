@@ -1,8 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
-import QRCode from "react-qr-code";
-import { saveToGoogleSheets } from "./actions/saveToSheet";
+import { Cuer } from "cuer";
 import RegistrationSection from "./components/RegistrationSection";
+import { generateQrDataUrl } from "./utils/generateQrDataUrl";
+import { saveToGoogleSheets } from "./actions/saveToSheet";
+import * as htmlToImage from "html-to-image";
 
 export default function EventLanding() {
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -16,8 +18,100 @@ export default function EventLanding() {
     seconds: 0,
   });
   const [error, setError] = useState("");
-
   const [ticketType, setTicketType] = useState("regular"); // 'regular' or 'vip'
+  const [isUploadingQr, setIsUploadingQr] = useState(false);
+
+  const handleRegisterSuccess = (data: any) => {
+    console.log("HANDLE REGISTER SUCCESS", data); // debug
+    setRegistrationData(data);
+    setIsSubmitted(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    const autoUploadQr = async () => {
+      if (!isSubmitted || !registrationData) return;
+      if (isUploadingQr) return; // cegah double
+      if (registrationData.qrImageUrl) return;
+
+      try {
+        setIsUploadingQr(true);
+
+        // 1) generate QR dari Cuer (DOM sudah render karena isSubmitted true)
+        const qrDataUrl = await generateQrDataUrl();
+        if (!qrDataUrl) {
+          setError("Gagal generate QR dari Cuer.");
+          return;
+        }
+
+        // 2) upload ke Cloudinary
+        const uploadRes = await fetch("/api/upload-qr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            image: qrDataUrl,
+            publicId: registrationData.id,
+          }),
+        });
+
+        const uploadJson = await uploadRes.json();
+        if (!uploadJson.success) {
+          setError("Gagal upload QR ke Cloudinary.");
+          return;
+        }
+
+        const qrImageUrl = uploadJson.url;
+
+        // === tambahkan blok ini ===
+        let kuota: number | undefined;
+        let sponsorPackage: string | undefined;
+
+        if (registrationData.ticketType === "vip") {
+          const sponsorRes = await fetch("/api/sponsor-package", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: registrationData.name }),
+          });
+
+          const sponsorJson = await sponsorRes.json();
+
+          if (!sponsorJson.success) {
+            setError("Sponsor VIP tidak valid atau paket tidak ditemukan.");
+            return;
+          }
+
+          sponsorPackage = sponsorJson.package;
+          kuota = sponsorJson.kuota ?? undefined;
+        }
+
+        // 3) simpan ke Google Sheets (dengan field qrImageUrl)
+        await saveToGoogleSheets({
+          ...registrationData,
+          qrImageUrl,
+          kuota,
+          sponsorPackage,
+        });
+
+        // optional: update state lokal
+        setRegistrationData((prev: any) => ({
+          ...prev,
+          qrImageUrl,
+        }));
+      } catch (e) {
+        console.error(e);
+        setError("Terjadi kesalahan saat upload QR.");
+      } finally {
+        setIsUploadingQr(false);
+      }
+    };
+
+    // tunda sedikit supaya Cuer benar-benar sudah render SVG
+    const timer = setTimeout(() => {
+      autoUploadQr();
+    }, 300); // 300ms
+
+    return () => clearTimeout(timer);
+  }, [registrationData]);
 
   // Countdown Timer
   useEffect(() => {
@@ -41,27 +135,18 @@ export default function EventLanding() {
   }, []);
 
   const downloadQRCode = () => {
-    const svg = document.getElementById("qr-code");
-    if (!svg) return;
+    const node = document.getElementById("qr-code");
+    if (!node) {
+      console.error("QR wrapper tidak ditemukan");
+      return;
+    }
 
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx?.drawImage(img, 0, 0);
-      const pngFile = canvas.toDataURL("image/png");
-
-      const downloadLink = document.createElement("a");
-      downloadLink.download = `QR-${registrationData.id}.png`;
-      downloadLink.href = pngFile;
-      downloadLink.click();
-    };
-
-    img.src = "data:image/svg+xml;base64," + btoa(svgData);
+    htmlToImage.toPng(node).then((dataUrl) => {
+      const link = document.createElement("a");
+      link.download = `QR-${registrationData.id}.png`;
+      link.href = dataUrl;
+      link.click();
+    });
   };
 
   // QR Code View
@@ -96,14 +181,26 @@ export default function EventLanding() {
 
           <div className="flex justify-center mb-8">
             <div className="bg-white p-6 border-4 border-slate-900 inline-block">
-              <QRCode
-                id="qr-code"
-                value={JSON.stringify(registrationData)}
-                size={256}
-                level="H"
-                fgColor="#0f172a"
-                bgColor="#ffffff"
-              />
+              <div id="qr-code" className="inline-block">
+                <Cuer
+                  value={JSON.stringify(registrationData)}
+                  size={260}
+                  color="black"
+                  arena={
+                    <div
+                      style={{
+                        transform: "scale(4)", // scale 4x supaya saat export tidak mengecil
+                        transformOrigin: "center", // supaya tetap di tengah
+                      }}
+                      className="flex items-center justify-center"
+                    >
+                      <span className="bg-white text-black text-[1px] font-bold px-[1px] rounded">
+                        {registrationData.id}
+                      </span>
+                    </div>
+                  }
+                />
+              </div>
             </div>
           </div>
 
@@ -869,13 +966,7 @@ export default function EventLanding() {
       </section>
 
       {/* Registration Section */}
-      <RegistrationSection
-        onRegisterSuccess={(data) => {
-          setRegistrationData(data);
-          setIsSubmitted(true);
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }}
-      />
+      <RegistrationSection onRegisterSuccess={handleRegisterSuccess} />
 
       {/* FAQ Section */}
       <section className="py-20 px-4 bg-slate-50">

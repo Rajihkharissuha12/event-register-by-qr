@@ -7,6 +7,10 @@ export async function saveToGoogleSheets(data: {
   name: string;
   email: string;
   phone: string;
+  ticketType: "regular" | "vip";
+  qrImageUrl?: string;
+  kuota?: number;
+  sponsorPackage?: string;
 }) {
   try {
     const auth = new google.auth.JWT({
@@ -28,9 +32,13 @@ export async function saveToGoogleSheets(data: {
             data.name,
             data.email,
             data.phone,
+            data.ticketType,
             new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }), // Registration Time
             "BELUM HADIR", // Status (default)
             "", // Check-in Time (kosong dulu)
+            data.qrImageUrl, // QR Image URL
+            data.kuota, // Kuota
+            data.sponsorPackage, // Sponsor Package
           ],
         ],
       },

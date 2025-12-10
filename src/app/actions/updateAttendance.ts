@@ -12,19 +12,24 @@ export async function updateAttendanceStatus(registrationId: string) {
 
     const sheets = google.sheets({ version: "v4", auth });
 
-    // 1. Get all data untuk find row dengan ID yang cocok
+    // A: ID, B: NAMA, C: EMAIL, D: NO HP, E: Type, F: Tgl Regist,
+    // G: Status Kehadiran, H: Tgl Checkin, I: Link QR, J: Kuota, K: Kategori
     const getResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "Sheet1!A:F", // A=ID, B=Name, C=Email, D=Phone, E=Timestamp, F=Status
+      range: "Sheet1!A:K",
     });
+
+    const normalizeId = (id: string) => String(Number(id));
 
     const rows = getResponse.data.values || [];
     let rowIndex = -1;
 
-    // Find row dengan registration ID yang cocok
     for (let i = 0; i < rows.length; i++) {
-      if (rows[i][0] === registrationId) {
-        rowIndex = i + 1; // Sheets API uses 1-based index
+      const sheetId = rows[i][0]; // ID di kolom A
+      if (!sheetId) continue;
+
+      if (normalizeId(sheetId) === normalizeId(registrationId)) {
+        rowIndex = i + 1; // 1-based
         break;
       }
     }
@@ -36,44 +41,64 @@ export async function updateAttendanceStatus(registrationId: string) {
       };
     }
 
-    // Check if already attended
-    if (rows[rowIndex - 1][5] === "HADIR") {
+    const row = rows[rowIndex - 1];
+
+    const name = row[1]; // B
+    const type = row[4]; // E
+    const kuotaRaw = row[9]; // J
+    const currentKuota = Number(kuotaRaw) || 0;
+
+    // jika ada angka kuota dan sudah 0 → tolak checkin
+    if (kuotaRaw !== undefined && currentKuota <= 0) {
       return {
         success: false,
-        error: "Peserta sudah melakukan check-in sebelumnya",
-        alreadyAttended: true,
+        error: `Check-in untuk sponsor "${name}" sudah maksimal.`,
       };
     }
 
-    // 2. Update status menjadi HADIR
-    const updateResponse = await sheets.spreadsheets.values.update({
-      spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: `Sheet1!F${rowIndex}`, // Column F = Status
-      valueInputOption: "USER_ENTERED",
-      requestBody: {
-        values: [["HADIR"]],
-      },
+    // hitung kuota baru jika ada kuota dan type vip
+    let newKuota = kuotaRaw;
+    if (kuotaRaw !== undefined && String(type).toLowerCase() === "vip") {
+      newKuota = currentKuota > 0 ? currentKuota - 1 : 0;
+    }
+
+    const now = new Date().toLocaleString("id-ID", {
+      timeZone: "Asia/Jakarta",
     });
 
-    // 3. Update timestamp check-in di column G
+    // status HADIR boleh di-set tiap scan; kuota yang jadi pembatas
+    const updatedRow = [
+      row[0], // A: ID
+      row[1], // B: NAMA
+      row[2], // C: EMAIL
+      row[3], // D: NO HP
+      row[4], // E: Type
+      row[5], // F: Tanggal Regist
+      "HADIR", // G: Status Kehadiran
+      now, // H: Tanggal Checkin
+      row[8], // I: Link QR
+      newKuota, // J: Kuota
+      row[10], // K: Kategori
+    ];
+
     await sheets.spreadsheets.values.update({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: `Sheet1!G${rowIndex}`, // Column G = Check-in Time
+      range: `Sheet1!A${rowIndex}:K${rowIndex}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [
-          [new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })],
-        ],
+        values: [updatedRow],
       },
     });
 
     return {
       success: true,
       data: {
-        id: rows[rowIndex - 1][0],
-        name: rows[rowIndex - 1][1],
-        email: rows[rowIndex - 1][2],
-        phone: rows[rowIndex - 1][3],
+        id: updatedRow[0],
+        name: updatedRow[1],
+        email: updatedRow[2],
+        phone: updatedRow[3],
+        type: updatedRow[4],
+        kuota: updatedRow[9],
       },
     };
   } catch (error) {

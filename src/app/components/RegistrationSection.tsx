@@ -3,11 +3,13 @@
 import { useState, FormEvent, ChangeEvent } from "react";
 import { PaymentResponse, MidtransResult } from "@/types/midtrans";
 import { saveToGoogleSheets } from "../actions/saveToSheet";
+import { generateQrDataUrl } from "../utils/generateQrDataUrl";
 
 interface FormData {
   name: string;
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string;
+  ticketType: "regular" | "vip";
 }
 
 type TicketType = "regular" | "vip";
@@ -34,6 +36,7 @@ export default function RegistrationSection({
     name: "",
     email: "",
     phone: "",
+    ticketType: "regular" as const,
   });
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
@@ -76,24 +79,31 @@ export default function RegistrationSection({
         window.snap.pay(data.token, {
           onSuccess: async (result) => {
             console.log("✅ Payment Success:", result);
-            const data = {
-              id: `REG${Date.now()}`,
-              name: formData.name,
-              email: formData.email,
-              phone: formData.phone,
-              ticketType: type,
-            };
 
-            const sheet = await saveToGoogleSheets(data);
-            if (!sheet.success) {
+            // 2) Simpan peserta reguler ke Sheets via API register-regular
+            const res = await fetch("/api/register-reguler", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(formData),
+            });
+
+            const json = await res.json();
+            if (!json.success) {
               setError("Gagal menyimpan data. Silakan hubungi admin.");
               return;
             }
 
-            setShowModal(false);
-            setFormData({ name: "", email: "", phone: "" });
+            const registered = json.data; // { id: 'REG1', name, email, ... }
+            console.log("CALL onRegisterSuccess with", registered);
+            onRegisterSuccess(registered); // sama pattern-nya dengan VIP
 
-            onRegisterSuccess(data); // trigger QR popup di parent
+            setShowModal(false);
+            setFormData({
+              name: "",
+              email: "",
+              phone: "",
+              ticketType: "regular",
+            });
           },
           onPending: (result: MidtransResult) => {
             console.log("⏳ Payment Pending:", result);
@@ -162,23 +172,73 @@ export default function RegistrationSection({
     setIsLoading(true);
     setError("");
 
-    const data = {
-      id: `VIP${Date.now()}`,
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      ticketType: "vip" as const,
-    };
-
     try {
-      const sheet = await saveToGoogleSheets(data);
-      if (!sheet.success) {
-        setError("Gagal menyimpan data. Silakan coba lagi.");
+      const inputNameRaw = formData.name;
+
+      const normalize = (s: string) =>
+        s
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, ""); // hanya huruf a-z dan angka 0-9
+
+      // 1) fetch list sponsor dari API / Google Sheets
+      const sponsorRes = await fetch("/api/sponsors");
+      const sponsorJson = await sponsorRes.json();
+
+      if (!sponsorJson.success) {
+        setError("Gagal mengambil data sponsor. Coba lagi.");
+        setIsLoading(false);
         return;
       }
 
-      setFormData({ name: "", email: "", phone: "" });
-      onRegisterSuccess(data); // langsung QR
+      const sponsors: string[] = sponsorJson.sponsors;
+
+      // 2) cek validitas dengan nama yang dinormalisasi
+      const normalizedInput = normalize(inputNameRaw);
+
+      const isValidSponsor = sponsors.some(
+        (s) => normalize(s) === normalizedInput
+      );
+
+      if (!isValidSponsor) {
+        alert("Nama sponsor tidak valid. Silakan cek kembali.");
+        setIsLoading(false);
+        return;
+      }
+
+      // 3) baru lanjut register VIP
+      const res = await fetch("/api/register-vip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: inputNameRaw,
+          email: "",
+          phone: "",
+        }),
+      });
+
+      const json = await res.json();
+
+      // validasi hasil dari API
+      if (!json.success) {
+        // kalau server kirim pesan spesifik (misal duplikat nama VIP / sponsor tidak valid), tampilkan
+        if (json.error) {
+          setError(json.error);
+        } else {
+          setError("Gagal menyimpan data. Silakan coba lagi.");
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        ticketType: "vip",
+      });
+
+      onRegisterSuccess(json.data);
     } catch (err) {
       console.error(err);
       setError("Terjadi kesalahan. Silakan coba lagi.");
@@ -198,6 +258,7 @@ export default function RegistrationSection({
       name: formData.get("name") as string,
       email: formData.get("email") as string,
       phone: formData.get("phone") as string,
+      ticketType: formData.get("ticketType") as TicketType,
     };
 
     try {
@@ -421,43 +482,19 @@ function VipForm({
       <div className="p-6 md:p-8">
         <form onSubmit={onSubmit} className="space-y-5">
           {error && <ErrorMessage message={error} />}
+
           <InputField
-            label="Nama Lengkap"
+            label="Nama Sponsor"
             name="name"
             type="text"
             value={formData.name}
             onChange={onInputChange}
-            placeholder="Masukkan nama lengkap"
+            placeholder="Masukkan nama sponsor"
           />
-          <InputField
-            label="Email"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={onInputChange}
-            placeholder="nama@email.com"
-          />
-          <InputField
-            label="Nomor WhatsApp"
-            name="phone"
-            type="tel"
-            value={formData.phone}
-            onChange={onInputChange}
-            placeholder="08xxxxxxxxxx"
-          />
-
-          <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-700 font-medium">Total:</span>
-              <span className="text-2xl font-bold text-slate-900">
-                Rp 299.000
-              </span>
-            </div>
-          </div>
 
           <SubmitButton
             isLoading={isLoading}
-            text="Bayar Sekarang"
+            text="Daftar VIP"
             className="bg-amber-500 hover:bg-amber-600 text-slate-900"
           />
         </form>
@@ -528,7 +565,7 @@ function ModalForm({
               label="Email"
               name="email"
               type="email"
-              value={formData.email}
+              value={formData.email || ""}
               onChange={onInputChange}
               placeholder="nama@email.com"
             />
@@ -536,7 +573,7 @@ function ModalForm({
               label="Nomor WhatsApp"
               name="phone"
               type="tel"
-              value={formData.phone}
+              value={formData.phone || ""}
               onChange={onInputChange}
               placeholder="08xxxxxxxxxx"
             />

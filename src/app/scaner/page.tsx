@@ -27,7 +27,6 @@ export default function ScannerPage() {
         setIsProcessing(false);
         return;
       }
-
       // Update attendance status
       const updateResult = await updateAttendanceStatus(scannedData.id);
 
@@ -38,15 +37,11 @@ export default function ScannerPage() {
         });
         setScanning(false);
       } else {
+        // contoh error dari server:
+        // - "Registration ID tidak ditemukan"
+        // - `Check-in untuk sponsor "PT Laju Brata" sudah maksimal.`
         setError(updateResult.error || "Gagal memproses check-in");
-        if (updateResult.alreadyAttended) {
-          setResult({
-            success: false,
-            alreadyAttended: true,
-            message: updateResult.error,
-          });
-          setScanning(false);
-        }
+        // tidak perlu setResult.alreadyAttended lagi
       }
     } catch (err) {
       console.error("Scan error:", err);
