@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, ChangeEvent } from "react";
+import { useState, FormEvent, ChangeEvent, useEffect } from "react";
 import { PaymentResponse, MidtransResult } from "@/types/midtrans";
 import { saveToGoogleSheets } from "../actions/saveToSheet";
 import { generateQrDataUrl } from "../utils/generateQrDataUrl";
@@ -12,7 +12,7 @@ interface FormData {
   ticketType: "regular" | "vip";
 }
 
-type TicketType = "regular" | "vip";
+export type TicketType = "regular" | "vip";
 interface RegistrationSectionProps {
   onRegisterSuccess: (data: {
     id: string;
@@ -25,7 +25,8 @@ interface RegistrationSectionProps {
 
 export default function RegistrationSection({
   onRegisterSuccess,
-}: RegistrationSectionProps) {
+  type,
+}: RegistrationSectionProps & { type: TicketType }) {
   const [ticketType, setTicketType] = useState<TicketType>("regular");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [registrationData, setRegistrationData] = useState<any>(null);
@@ -38,6 +39,24 @@ export default function RegistrationSection({
     phone: "",
     ticketType: "regular" as const,
   });
+
+  const MAX_REGULAR = 50;
+
+  const [regularCount, setRegularCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const res = await fetch("/api/regular-count");
+        const json = await res.json();
+        if (json.success) setRegularCount(json.count);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    fetchCount();
+  }, []);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
@@ -53,6 +72,11 @@ export default function RegistrationSection({
     setError("");
 
     try {
+      if (regularCount >= MAX_REGULAR) {
+        setError("Mohon maaf, kuota reguler sudah penuh.");
+        setIsLoading(false);
+        return;
+      }
       const response = await fetch("/api/payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -300,7 +324,7 @@ export default function RegistrationSection({
           </div>
 
           {/* Toggle Switch */}
-          <div className="flex justify-center mb-8">
+          {/* <div className="flex justify-center mb-8">
             <div className="bg-slate-800/50 p-1 rounded-full inline-flex">
               <button
                 type="button"
@@ -325,11 +349,15 @@ export default function RegistrationSection({
                 VIP
               </button>
             </div>
-          </div>
+          </div> */}
 
           {/* Content */}
-          {ticketType === "regular" ? (
-            <TicketCard onBuyClick={() => setShowModal(true)} />
+          {type === "regular" ? (
+            <TicketCard
+              onBuyClick={() => setShowModal(true)}
+              regularCount={regularCount}
+              maxRegular={MAX_REGULAR}
+            />
           ) : (
             <VipForm
               formData={formData}
@@ -360,50 +388,56 @@ export default function RegistrationSection({
 // Ticket Card Component
 interface TicketCardProps {
   onBuyClick: () => void;
+  regularCount: number;
+  maxRegular: number;
 }
 
-function TicketCard({ onBuyClick }: TicketCardProps) {
+function TicketCard({ onBuyClick, regularCount, maxRegular }: TicketCardProps) {
   const benefits = [
-    "Akses ke semua sesi materi",
-    "E-certificate kehadiran",
-    "Networking session",
-    "Snack & coffee break",
+    "Akses ke seluruh sesi konferensi hari pertama",
+    "Sertifikat eksklusif National Sugar Summit 2025",
+    "Coffee break dan lunch break",
+    "Akses ke exhibition & booth expo",
   ];
+  const isFull = regularCount >= maxRegular;
+  const remaining = Math.max(maxRegular - regularCount, 0);
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-2xl border-4 border-white">
       <div className="bg-slate-900 p-6 text-center">
         <p className="text-amber-400 text-xs font-semibold tracking-widest mb-2">
-          SEMINAR EVENT 2025
+          NATIONAL SUGAR SUMMIT 2025
         </p>
         <h3 className="text-2xl md:text-3xl font-bold text-white mb-1">
           Tiket Reguler
         </h3>
         <p className="text-slate-400 text-sm">
-          Akses penuh ke seluruh rangkaian acara
+          Akses penuh ke rangkaian sesi konferensi & expo
         </p>
       </div>
 
       <div className="relative h-4 bg-slate-100">
-        <div className="absolute -top-3 left-0 w-6 h-6 bg-slate-900 rounded-full"></div>
-        <div className="absolute -top-3 right-0 w-6 h-6 bg-slate-900 rounded-full"></div>
-        <div className="absolute top-1/2 left-8 right-8 border-t-2 border-dashed border-slate-300 -translate-y-1/2"></div>
+        <div className="absolute -top-3 left-0 w-6 h-6 bg-slate-900 rounded-full" />
+        <div className="absolute -top-3 right-0 w-6 h-6 bg-slate-900 rounded-full" />
+        <div className="absolute top-1/2 left-8 right-8 border-t-2 border-dashed border-slate-300 -translate-y-1/2" />
       </div>
 
       <div className="p-6 md:p-8">
         <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
           <div>
             <p className="text-slate-500 text-xs uppercase mb-1">Tanggal</p>
-            <p className="text-slate-900 font-semibold">15 Januari 2025</p>
+            <p className="text-slate-900 font-semibold">
+              Rabu, 17 Desember 2025
+            </p>
           </div>
           <div>
             <p className="text-slate-500 text-xs uppercase mb-1">Waktu</p>
-            <p className="text-slate-900 font-semibold">09:00 - 17:00 WIB</p>
+            <p className="text-slate-900 font-semibold">08.00 - 17.00 WIB</p>
           </div>
           <div className="col-span-2">
             <p className="text-slate-500 text-xs uppercase mb-1">Lokasi</p>
             <p className="text-slate-900 font-semibold">
-              Grand Ballroom, Hotel XYZ Jakarta
+              Ballroom Grand City, Surabaya
             </p>
           </div>
         </div>
@@ -438,15 +472,22 @@ function TicketCard({ onBuyClick }: TicketCardProps) {
             </div>
             <div className="text-right">
               <p className="text-xs text-slate-500">Kuota tersisa</p>
-              <p className="text-lg font-bold text-amber-600">127 / 500</p>
+              <p className="text-lg font-bold text-amber-600">
+                {remaining} / {maxRegular}
+              </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onBuyClick}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3.5 rounded-lg transition"
+            disabled={isFull}
+            className={`w-full font-semibold py-3.5 rounded-lg transition ${
+              isFull
+                ? "bg-slate-400 cursor-not-allowed opacity-60"
+                : "bg-slate-900 hover:bg-slate-800 text-white"
+            }`}
           >
-            Beli Tiket Sekarang
+            {isFull ? "Kuota Penuh" : "Beli Tiket Sekarang"}
           </button>
         </div>
       </div>

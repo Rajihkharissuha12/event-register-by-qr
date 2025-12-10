@@ -27,6 +27,21 @@ export async function POST(req: Request) {
 
     const rows = readRes.data.values || [];
 
+    const regularCount = rows.slice(1).filter((row) => {
+      const type = row[4];
+      return String(type).toLowerCase() === "reguler";
+    }).length;
+
+    if (regularCount >= 50) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Kuota tiket reguler sudah penuh (50 peserta).",
+        },
+        { status: 400 }
+      );
+    }
+
     // 2) cari nomor terbesar
     let maxNum = 0;
     for (const row of rows) {

@@ -45,8 +45,19 @@ export async function updateAttendanceStatus(registrationId: string) {
 
     const name = row[1]; // B
     const type = row[4]; // E
+    const status = row[6]; // G
     const kuotaRaw = row[9]; // J
     const currentKuota = Number(kuotaRaw) || 0;
+
+    if (
+      String(type).toLowerCase() === "reguler" &&
+      String(status).toUpperCase() === "HADIR"
+    ) {
+      return {
+        success: false,
+        error: `Peserta "${name}" sudah melakukan check-in.`,
+      };
+    }
 
     // jika ada angka kuota dan sudah 0 → tolak checkin
     if (kuotaRaw !== undefined && currentKuota <= 0) {

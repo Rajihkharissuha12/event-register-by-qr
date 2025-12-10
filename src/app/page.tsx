@@ -1,12 +1,18 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Cuer } from "cuer";
-import RegistrationSection from "./components/RegistrationSection";
+import RegistrationSection, {
+  TicketType,
+} from "./components/RegistrationSection";
 import { generateQrDataUrl } from "./utils/generateQrDataUrl";
 import { saveToGoogleSheets } from "./actions/saveToSheet";
 import * as htmlToImage from "html-to-image";
+import { usePathname, useSearchParams } from "next/navigation";
 
 export default function EventLanding() {
+  const searchParams = useSearchParams();
+  const type = searchParams.get("type") || "regular"; // "vip" / "regguler"
+
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [registrationData, setRegistrationData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -62,6 +68,31 @@ export default function EventLanding() {
 
         const qrImageUrl = uploadJson.url;
 
+        function encodeTicketPayload(data: any) {
+          const json = JSON.stringify(data);
+          // browser-safe base64 (URL-safe)
+          const b64 = btoa(json)
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=+$/g, "");
+          return b64;
+        }
+
+        const baseUrl =
+          process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+
+        const payload = {
+          id: registrationData.id,
+          name: registrationData.name,
+          email: registrationData.email,
+          phone: registrationData.phone,
+          ticketType: registrationData.ticketType,
+        };
+
+        const encoded = encodeTicketPayload(payload);
+
+        const ticketUrl = `${baseUrl}/ticket?d=${encoded}`;
+
         // === tambahkan blok ini ===
         let kuota: number | undefined;
         let sponsorPackage: string | undefined;
@@ -87,7 +118,7 @@ export default function EventLanding() {
         // 3) simpan ke Google Sheets (dengan field qrImageUrl)
         await saveToGoogleSheets({
           ...registrationData,
-          qrImageUrl,
+          qrImageUrl: ticketUrl,
           kuota,
           sponsorPackage,
         });
@@ -95,7 +126,7 @@ export default function EventLanding() {
         // optional: update state lokal
         setRegistrationData((prev: any) => ({
           ...prev,
-          qrImageUrl,
+          qrImageUrl: ticketUrl,
         }));
       } catch (e) {
         console.error(e);
@@ -115,7 +146,7 @@ export default function EventLanding() {
 
   // Countdown Timer
   useEffect(() => {
-    const eventDate = new Date("2025-12-16T09:00:00").getTime();
+    const eventDate = new Date("2025-12-17T09:00:00").getTime();
 
     const timer = setInterval(() => {
       const now = new Date().getTime();
@@ -181,7 +212,14 @@ export default function EventLanding() {
 
           <div className="flex justify-center mb-8">
             <div className="bg-white p-6 border-4 border-slate-900 inline-block">
-              <div id="qr-code" className="inline-block">
+              <div
+                id="qr-code"
+                className="inline-block p-4 bg-white"
+                style={{
+                  border: "8px solid #111827", // warna frame (tailwind slate-900)
+                  borderRadius: "8px", // kalau mau sedikit rounded
+                }}
+              >
                 <Cuer
                   value={JSON.stringify(registrationData)}
                   size={260}
@@ -421,7 +459,8 @@ export default function EventLanding() {
             </h1>
 
             <p className="text-lg md:text-2xl mb-10 text-slate-300 font-light max-w-3xl mx-auto">
-              Merayakan Inovasi Digital Indonesia
+              Strengthening Food & Energy Security Through Sugar Industry
+              Transformation
             </p>
 
             {/* Event Info Pills */}
@@ -440,7 +479,7 @@ export default function EventLanding() {
                     d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                   />
                 </svg>
-                <span className="font-semibold">16 Desember 2025</span>
+                <span className="font-semibold">17 Desember 2025</span>
               </div>
 
               <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-5 py-3 rounded-full border border-white/20">
@@ -464,7 +503,7 @@ export default function EventLanding() {
                   />
                 </svg>
                 <span className="font-semibold">
-                  Grand City Conventional Hall, Surabaya
+                  Ballroom Grand City, Surabaya
                 </span>
               </div>
             </div>
@@ -478,29 +517,40 @@ export default function EventLanding() {
             </a>
 
             {/* Stats */}
-            <div className="mt-20 grid grid-cols-3 gap-8 max-w-2xl mx-auto">
+            <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-3xl mx-auto">
               <div className="text-center">
                 <div className="text-3xl md:text-4xl font-bold text-amber-400 mb-2">
-                  2000+
+                  500+
                 </div>
                 <div className="text-xs md:text-sm text-slate-400 uppercase tracking-wide">
                   Peserta
                 </div>
               </div>
-              <div className="text-center border-l border-r border-slate-700/50">
+
+              <div className="text-center md:border-l md:border-slate-700/50">
                 <div className="text-3xl md:text-4xl font-bold text-amber-400 mb-2">
-                  20+
+                  15+
                 </div>
                 <div className="text-xs md:text-sm text-slate-400 uppercase tracking-wide">
                   Pembicara
                 </div>
               </div>
-              <div className="text-center">
+
+              <div className="text-center md:border-l md:border-slate-700/50">
                 <div className="text-3xl md:text-4xl font-bold text-amber-400 mb-2">
-                  15+
+                  5+
                 </div>
                 <div className="text-xs md:text-sm text-slate-400 uppercase tracking-wide">
                   Workshop
+                </div>
+              </div>
+
+              <div className="text-center md:border-l md:border-slate-700/50">
+                <div className="text-3xl md:text-4xl font-bold text-amber-400 mb-2">
+                  25+
+                </div>
+                <div className="text-xs md:text-sm text-slate-400 uppercase tracking-wide">
+                  Booth Expo
                 </div>
               </div>
             </div>
@@ -546,25 +596,37 @@ export default function EventLanding() {
           <div className="grid md:grid-cols-2 gap-12">
             <div className="border-l-4 border-slate-900 pl-6">
               <h3 className="text-2xl font-bold text-slate-900 mb-4">
-                Apa Itu TIF 2025?
+                Apa Itu NSS 2025?
               </h3>
               <p className="text-slate-600 leading-relaxed">
-                Tech Innovation Festival adalah event tahunan terbesar yang
-                menghadirkan para pelaku industri teknologi, startup, developer,
-                dan enthusiast untuk berbagi pengalaman, networking, dan
-                showcase produk inovatif terkini.
+                National Sugar Summit (NSS) 2025 adalah konferensi nasional
+                industri gula Indonesia yang berfokus pada penguatan ketahanan
+                pangan dan energi melalui transformasi menyeluruh rantai pasok
+                gula, dari hulu hingga hilir.
+              </p>
+              <p className="text-slate-600 leading-relaxed mt-3">
+                Melalui sesi konferensi, diskusi panel, dan expo teknologi, NSS
+                2025 menghadirkan wawasan kebijakan, inovasi budidaya dan
+                pabrik, hingga pemanfaatan tebu sebagai sumber bioenergi
+                berkelanjutan.
               </p>
             </div>
 
             <div className="border-l-4 border-amber-500 pl-6">
               <h3 className="text-2xl font-bold text-slate-900 mb-4">
-                Siapa Yang Hadir?
+                Siapa yang Hadir?
               </h3>
               <p className="text-slate-600 leading-relaxed">
-                Bergabunglah dengan 2000+ peserta dari berbagai background:
-                Founder & CTO startup, Software Engineers, Product Managers,
-                Investors, Mahasiswa IT, dan profesional tech dari seluruh
-                Indonesia.
+                Peserta NSS 2025 meliputi perwakilan Kementerian dan lembaga
+                pemerintah, direksi dan manajemen pabrik gula BUMN maupun
+                swasta, petani dan asosiasi tebu, peneliti dan akademisi, pelaku
+                industri pendukung, hingga lembaga keuangan dan investor.
+              </p>
+              <p className="text-slate-600 leading-relaxed mt-3">
+                Event ini dirancang sebagai platform kolaborasi lintas pemangku
+                kepentingan untuk berbagi pengalaman, menyusun strategi, dan
+                membangun kemitraan konkret demi masa depan industri gula
+                Indonesia yang lebih tangguh dan berdaya saing.
               </p>
             </div>
           </div>
@@ -649,39 +711,55 @@ export default function EventLanding() {
           <div className="space-y-4">
             {[
               {
-                time: "09:00 - 10:00",
-                title: "Registrasi & Welcoming Coffee",
-                desc: "Check-in peserta dan networking session",
+                time: "08.00 - 08.30",
+                title: "Registrasi dan Coffee Break",
+                desc: "",
               },
               {
-                time: "10:00 - 11:30",
-                title: "Keynote: AI Revolution in Indonesia",
-                desc: "Speaker: Dr. Budi Rahardjo - AI Researcher",
+                time: "08.30 - 09.15",
+                title:
+                  "Pembukaan Acara, Menyanyikan Lagu Indonesia Raya dan Pembacaan Doa",
+                desc: "",
               },
               {
-                time: "11:30 - 13:00",
-                title: "Panel Discussion: Startup Ecosystem",
-                desc: "4 Founder unicorn startup Indonesia",
+                time: "09.15 - 11.00",
+                title: "Keynote Speech",
+                desc: "",
               },
               {
-                time: "13:00 - 14:00",
-                title: "Lunch Break & Expo",
-                desc: "Networking sambil menjelajahi booth sponsor",
+                time: "11.00 - 11.45",
+                title: "Technology Session 1",
+                desc: "",
               },
               {
-                time: "14:00 - 16:00",
-                title: "Workshop: Building Scalable Apps",
-                desc: "Hands-on session dengan senior engineers",
+                time: "11.45 - 12.45",
+                title: "Lunch Break",
+                desc: "",
               },
               {
-                time: "16:00 - 17:30",
-                title: "Startup Pitch Competition",
-                desc: "10 startup terbaik pitching ide mereka",
+                time: "12.45 - 13.15",
+                title: "International Speaker",
+                desc: "",
               },
               {
-                time: "17:30 - 18:00",
-                title: "Closing & Networking Party",
-                desc: "Doorprize dan live music performance",
+                time: "13.15 - 14.00",
+                title: "Technology Session 2",
+                desc: "",
+              },
+              {
+                time: "14.00 - 16.00",
+                title: "Industrial Session",
+                desc: "",
+              },
+              {
+                time: "16.00 - 16.30",
+                title: "Awarding Best Sugar Mills & Best Farmers",
+                desc: "",
+              },
+              {
+                time: "16.30 - 17.00",
+                title: "Pembacaan Rumusan & Closing",
+                desc: "",
               },
             ].map((item, idx) => (
               <div
@@ -696,7 +774,9 @@ export default function EventLanding() {
                     <h3 className="text-lg font-bold text-slate-900 mb-1">
                       {item.title}
                     </h3>
-                    <p className="text-slate-600 text-sm">{item.desc}</p>
+                    {item.desc && (
+                      <p className="text-slate-600 text-sm">{item.desc}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -715,7 +795,7 @@ export default function EventLanding() {
           <div className="grid md:grid-cols-2 gap-12">
             <div>
               <h3 className="text-2xl font-bold text-slate-900 mb-6">
-                Grand Atrium Mall
+                Ballroom Grand City, Surabaya
               </h3>
 
               <div className="space-y-4 mb-6">
@@ -742,7 +822,8 @@ export default function EventLanding() {
                   <div>
                     <p className="font-semibold text-slate-900">Alamat</p>
                     <p className="text-slate-600">
-                      Jl. Jenderal Sudirman No. 123, Jakarta Pusat 10220
+                      Jl. Gubeng Pojok No.1, Ketabang, Kec. Genteng, Surabaya,
+                      Jawa Timur 60272
                     </p>
                   </div>
                 </div>
@@ -764,10 +845,11 @@ export default function EventLanding() {
                   <div>
                     <p className="font-semibold text-slate-900">Transportasi</p>
                     <p className="text-slate-600">
-                      MRT Bundaran HI (5 menit jalan kaki)
+                      ±5 menit dari Stasiun Gubeng dengan kendaraan.
                     </p>
                     <p className="text-slate-600">
-                      TransJakarta Halte Dukuh Atas
+                      Akses mudah via transportasi online dan angkutan kota
+                      pusat Surabaya.
                     </p>
                   </div>
                 </div>
@@ -789,31 +871,22 @@ export default function EventLanding() {
                   <div>
                     <p className="font-semibold text-slate-900">Parkir</p>
                     <p className="text-slate-600">
-                      Tersedia parkir gratis untuk peserta
+                      Area parkir luas di dalam kompleks Grand City Mall.
                     </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="h-96 bg-slate-200 border-2 border-slate-900 flex items-center justify-center">
-              <div className="text-center">
-                <svg
-                  className="w-16 h-16 text-slate-400 mx-auto mb-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-                  />
-                </svg>
-                <p className="text-slate-500 font-medium">Google Maps</p>
-                <p className="text-sm text-slate-400 mt-1">Embed map di sini</p>
-              </div>
+            <div className="h-96 bg-slate-200 border-2 border-slate-900">
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3957.808716391202!2d112.74613858679446!3d-7.262597974035777!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd7f963466fcf4f%3A0x9183b1620f465602!2sGrand%20City%20Convention%20Dan%20Exhibition!5e0!3m2!1sid!2sid!4v1765377542494!5m2!1sid!2sid"
+                className="w-full h-full"
+                style={{ border: 0 }}
+                loading="lazy"
+                allowFullScreen
+                referrerPolicy="no-referrer-when-downgrade"
+              />
             </div>
           </div>
         </div>
@@ -828,28 +901,28 @@ export default function EventLanding() {
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
-                title: "Sertifikat Digital",
-                desc: "Sertifikat resmi dari penyelenggara",
+                title: "Sertifikat Eksklusif",
+                desc: "Sertifikat fisik resmi National Sugar Summit 2025 untuk peserta, official, dan sponsor.",
               },
               {
-                title: "Goodie Bag",
-                desc: "Merchandise eksklusif senilai 500rb",
+                title: "Souvenir Premium",
+                desc: "Plakat eksklusif NSS 2025 sebagai apresiasi untuk pembicara, sponsor, dan penerima penghargaan.",
               },
               {
-                title: "Free Lunch & Snack",
-                desc: "Makan siang dan coffee break gratis",
+                title: "Goodie Bag NSS 2025",
+                desc: "Tote bag berisi merchandise resmi NSS seperti tumbler, pulpen, dan notebook edisi khusus.",
               },
               {
-                title: "Job Fair Access",
-                desc: "Akses ke booth recruitment 20+ perusahaan",
+                title: "Materi & Dokumentasi",
+                desc: "Akses ke materi presentasi terpilih dan dokumentasi kegiatan setelah acara.",
               },
               {
-                title: "E-Book Bundle",
-                desc: "Kumpulan e-book tech senilai 1 juta",
+                title: "Networking",
+                desc: "Kesempatan bertemu langsung dengan pelaku industri gula, pemerintah, dan akademisi.",
               },
               {
-                title: "Doorprize",
-                desc: "Kesempatan menang gadget & voucher",
+                title: "Kesempatan Penghargaan",
+                desc: "Berbagai kategori apresiasi untuk pabrik gula dan petani terbaik di ajang NSS 2025.",
               },
             ].map((item, idx) => (
               <div
@@ -868,7 +941,7 @@ export default function EventLanding() {
       </section>
 
       {/* Sponsors Section */}
-      <section className="py-20 px-4 bg-slate-50">
+      {/* <section className="py-20 px-4 bg-slate-50">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-4xl font-bold text-center text-slate-900 mb-4">
             Sponsor & Partner
@@ -905,10 +978,10 @@ export default function EventLanding() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Testimonials Section */}
-      <section className="py-20 px-4">
+      {/* <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-4xl font-bold text-center text-slate-900 mb-4">
             Kata Mereka
@@ -963,10 +1036,13 @@ export default function EventLanding() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Registration Section */}
-      <RegistrationSection onRegisterSuccess={handleRegisterSuccess} />
+      <RegistrationSection
+        onRegisterSuccess={handleRegisterSuccess}
+        type={type as TicketType}
+      />
 
       {/* FAQ Section */}
       <section className="py-20 px-4 bg-slate-50">
@@ -978,28 +1054,31 @@ export default function EventLanding() {
           <div className="space-y-6">
             {[
               {
-                q: "Apakah event ini berbayar?",
-                a: "Tidak, event ini 100% GRATIS untuk semua peserta. Namun kuota terbatas hanya 2000 peserta.",
+                q: "Apakah mengikuti National Sugar Summit 2025 berbayar?",
+                a:
+                  type === "vip"
+                    ? "Untuk tamu VIP, tiket tidak dikenakan biaya (gratis). Undangan VIP mendapatkan fasilitas khusus sesuai paket yang ditentukan panitia."
+                    : "Untuk peserta reguler, tiket berbayar Rp 300.000 per orang dengan fasilitas akses sesi konferensi, coffee break, lunch break, dan expo.",
               },
               {
-                q: "Apakah saya perlu membawa laptop?",
-                a: "Untuk sesi workshop disarankan membawa laptop. Untuk sesi lainnya tidak wajib.",
+                q: "Apa perbedaan tiket VIP dan Reguler?",
+                a: "Pemegang tiket VIP merupakan tamu undangan/sponsor dengan fasilitas khusus, sedangkan tiket Reguler adalah tiket berbayar untuk peserta umum dengan akses ke seluruh sesi konferensi dan expo.",
               },
               {
-                q: "Bagaimana dress code untuk event ini?",
-                a: "Smart casual atau business casual. Kami menyarankan pakaian yang nyaman untuk networking.",
+                q: "Apakah semua peserta mendapatkan sertifikat?",
+                a: "Ya, baik peserta VIP maupun Reguler yang hadir dan melakukan registrasi ulang akan mendapatkan sertifikat sesuai ketentuan panitia.",
               },
               {
-                q: "Apakah ada sertifikat?",
-                a: "Ya, semua peserta yang hadir akan mendapatkan sertifikat digital yang bisa di-download setelah event.",
+                q: "Apa saja fasilitas untuk peserta reguler?",
+                a: "Peserta reguler mendapatkan akses ke sesi konferensi, coffee break, lunch break, dan booth expo selama hari acara.",
               },
               {
-                q: "Bagaimana jika saya tidak bisa hadir?",
-                a: "Silakan informasikan kepada kami minimal H-3 agar kuota bisa diberikan ke peserta lain.",
+                q: "Bagaimana jika saya sudah daftar tetapi tidak bisa hadir?",
+                a: "Silakan informasikan ke panitia melalui kontak resmi agar kuota dan kursi dapat dialokasikan ke peserta lain.",
               },
               {
-                q: "Apakah tersedia recording?",
-                a: "Ya, recording keynote dan panel discussion akan dibagikan ke semua peserta terdaftar.",
+                q: "Apakah tersedia materi atau rekaman acara?",
+                a: "Panitia akan menyediakan materi presentasi dan dokumentasi terbatas yang dapat diakses peserta terdaftar setelah acara.",
               },
             ].map((faq, idx) => (
               <div
@@ -1022,22 +1101,23 @@ export default function EventLanding() {
           <div className="grid md:grid-cols-3 gap-8 mb-8">
             <div>
               <h3 className="text-xl font-bold mb-4">
-                Tech Innovation Festival
+                National Sugar Summit 2025
               </h3>
               <p className="text-slate-400 leading-relaxed">
-                Merayakan inovasi digital Indonesia dan membangun ekosistem
-                teknologi yang lebih kuat.
+                Forum strategis nasional untuk memperkuat ketahanan pangan dan
+                energi melalui transformasi industri gula Indonesia dari hulu
+                hingga hilir.
               </p>
             </div>
 
             <div>
               <h4 className="font-bold mb-4 uppercase tracking-wide text-sm">
-                Kontak
+                Kontak Panitia
               </h4>
               <div className="space-y-2 text-slate-400">
-                <p>Email: info@techinnovation.id</p>
-                <p>WhatsApp: +62 812-3456-7890</p>
-                <p>Instagram: @techinnovationfest</p>
+                {/* <p>Email: nss2025@danantara.id</p>
+                <p>WhatsApp Sekretariat: +62 812-0000-0000</p> */}
+                <p>Lokasi: Ballroom Grand City, Surabaya</p>
               </div>
             </div>
 
@@ -1050,7 +1130,7 @@ export default function EventLanding() {
                   href="#about"
                   className="block text-slate-400 hover:text-amber-500 transition"
                 >
-                  Tentang
+                  Tentang Event
                 </a>
                 <a
                   href="#agenda"
@@ -1062,7 +1142,7 @@ export default function EventLanding() {
                   href="#register"
                   className="block text-slate-400 hover:text-amber-500 transition"
                 >
-                  Daftar
+                  Pendaftaran
                 </a>
               </div>
             </div>
@@ -1070,49 +1150,11 @@ export default function EventLanding() {
 
           <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-slate-500 text-sm">
-              © 2025 Tech Innovation Festival. All rights reserved.
+              © 2025 National Sugar Summit. All rights reserved.
             </p>
-
-            <div className="flex gap-6">
-              <a
-                href="#"
-                className="text-slate-400 hover:text-amber-500 transition"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073z" />
-                  <path d="M12 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zm0 10.162a3.999 3.999 0 110-7.998 3.999 3.999 0 010 7.998z" />
-                  <circle cx="18.406" cy="5.594" r="1.44" />
-                </svg>
-              </a>
-              <a
-                href="#"
-                className="text-slate-400 hover:text-amber-500 transition"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
-                </svg>
-              </a>
-              <a
-                href="#"
-                className="text-slate-400 hover:text-amber-500 transition"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                </svg>
-              </a>
-            </div>
+            <p className="text-slate-500 text-xs">
+              Diselenggarakan oleh pemangku kepentingan industri gula Indonesia.
+            </p>
           </div>
         </div>
       </footer>
