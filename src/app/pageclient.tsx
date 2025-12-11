@@ -1116,8 +1116,17 @@ export default function PageShell({ type }: PageShellProps) {
                 Kontak Panitia
               </h4>
               <div className="space-y-2 text-slate-400">
-                <p>Email: nss2025@danantara.id</p>
-                <p>WhatsApp Sekretariat: +62 812-0000-0000</p>
+                <p>
+                  WhatsApp Sekretariat:{" "}
+                  <a
+                    href="https://wa.me/628563019952?text=Halo%20kak%2C%20mau%20bertanya%20...."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-500 underline"
+                  >
+                    +62 856-3019-952
+                  </a>
+                </p>
                 <p>Lokasi: Ballroom Grand City, Surabaya</p>
               </div>
             </div>
