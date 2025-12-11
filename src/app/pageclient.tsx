@@ -460,107 +460,119 @@ export default function PageShell({ type }: PageShellProps) {
         </div>
 
         <div className="max-w-6xl mx-auto relative z-10">
-          <div className="text-center">
-            {/* Main Title */}
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-4 tracking-tight">
-              NSS
-              <br />
-              <span className="text-amber-400">National Sugar Summit 2025</span>
-            </h1>
-
-            <p className="text-lg md:text-2xl mb-10 text-slate-300 font-light max-w-3xl mx-auto">
-              Strengthening Food & Energy Security Through Sugar Industry
-              Transformation
-            </p>
-
-            {/* Event Info Pills */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm md:text-base mb-12">
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-5 py-3 rounded-full border border-white/20">
-                <svg
-                  className="w-5 h-5 text-amber-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-                <span className="font-semibold">17 Desember 2025</span>
-              </div>
-
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-5 py-3 rounded-full border border-white/20">
-                <svg
-                  className="w-5 h-5 text-amber-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-                <span className="font-semibold">
-                  Ballroom Grand City, Surabaya
-                </span>
-              </div>
+          <div className="grid md:grid-cols-2 gap-10 items-center">
+            {/* Kiri: Gambar */}
+            <div className="flex justify-center md:justify-start">
+              <img
+                src="https://res.cloudinary.com/dvuza2lpc/image/upload/v1765439564/1_jky1ol.png"
+                alt="National Sugar Summit 2025"
+                className="max-w-full h-auto rounded-xl shadow-2xl border border-white/10"
+              />
             </div>
+            <div className="text-center">
+              {/* Main Title */}
+              <h1 className="hidden md:block text-4xl md:text-6xl lg:text-7xl font-bold mb-4 tracking-tight">
+                NSS
+                <br />
+                <span className="text-amber-400">
+                  National Sugar Summit 2025
+                </span>
+              </h1>
 
-            {/* CTA Button */}
-            <a
-              href="#register"
-              className="inline-block bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-4 px-12 rounded-lg transition duration-300 shadow-lg hover:shadow-xl hover:scale-105 transform uppercase tracking-wide text-sm"
-            >
-              Daftar Sekarang
-            </a>
+              <p className="text-lg md:text-2xl mb-10 text-slate-300 font-light max-w-3xl mx-auto">
+                Strengthening Food & Energy Security Through Sugar Industry
+                Transformation
+              </p>
 
-            {/* Stats */}
-            <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-3xl mx-auto">
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-amber-400 mb-2">
-                  500+
+              {/* Event Info Pills */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm md:text-base mb-12">
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-5 py-3 rounded-full border border-white/20">
+                  <svg
+                    className="w-5 h-5 text-amber-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <span className="font-semibold">17 Desember 2025</span>
                 </div>
-                <div className="text-xs md:text-sm text-slate-400 uppercase tracking-wide">
-                  Peserta
+
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-5 py-3 rounded-full border border-white/20">
+                  <svg
+                    className="w-5 h-5 text-amber-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                  <span className="font-semibold">
+                    Ballroom Lt. 4, Grand City, Surabaya
+                  </span>
                 </div>
               </div>
 
-              <div className="text-center md:border-l md:border-slate-700/50">
-                <div className="text-3xl md:text-4xl font-bold text-amber-400 mb-2">
-                  15+
-                </div>
-                <div className="text-xs md:text-sm text-slate-400 uppercase tracking-wide">
-                  Pembicara
-                </div>
-              </div>
+              {/* CTA Button */}
+              <a
+                href="#register"
+                className="inline-block bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-4 px-12 rounded-lg transition duration-300 shadow-lg hover:shadow-xl hover:scale-105 transform uppercase tracking-wide text-sm"
+              >
+                Daftar Sekarang
+              </a>
 
-              <div className="text-center md:border-l md:border-slate-700/50">
-                <div className="text-3xl md:text-4xl font-bold text-amber-400 mb-2">
-                  5+
+              {/* Stats */}
+              <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-3xl mx-auto">
+                <div className="text-center">
+                  <div className="text-3xl md:text-4xl font-bold text-amber-400 mb-2">
+                    500+
+                  </div>
+                  <div className="text-xs md:text-sm text-slate-400 uppercase tracking-wide">
+                    Peserta
+                  </div>
                 </div>
-                <div className="text-xs md:text-sm text-slate-400 uppercase tracking-wide">
-                  Workshop
-                </div>
-              </div>
 
-              <div className="text-center md:border-l md:border-slate-700/50">
-                <div className="text-3xl md:text-4xl font-bold text-amber-400 mb-2">
-                  25+
+                <div className="text-center md:border-l md:border-slate-700/50">
+                  <div className="text-3xl md:text-4xl font-bold text-amber-400 mb-2">
+                    15+
+                  </div>
+                  <div className="text-xs md:text-sm text-slate-400 uppercase tracking-wide">
+                    Pembicara
+                  </div>
                 </div>
-                <div className="text-xs md:text-sm text-slate-400 uppercase tracking-wide">
-                  Booth Expo
+
+                <div className="text-center md:border-l md:border-slate-700/50">
+                  <div className="text-3xl md:text-4xl font-bold text-amber-400 mb-2">
+                    5+
+                  </div>
+                  <div className="text-xs md:text-sm text-slate-400 uppercase tracking-wide">
+                    Workshop
+                  </div>
+                </div>
+
+                <div className="text-center md:border-l md:border-slate-700/50">
+                  <div className="text-3xl md:text-4xl font-bold text-amber-400 mb-2">
+                    25+
+                  </div>
+                  <div className="text-xs md:text-sm text-slate-400 uppercase tracking-wide">
+                    Booth Expo
+                  </div>
                 </div>
               </div>
             </div>
@@ -805,7 +817,7 @@ export default function PageShell({ type }: PageShellProps) {
           <div className="grid md:grid-cols-2 gap-12">
             <div>
               <h3 className="text-2xl font-bold text-slate-900 mb-6">
-                Ballroom Grand City, Surabaya
+                Ballroom Lt. 4, Grand City, Surabaya
               </h3>
 
               <div className="space-y-4 mb-6">
@@ -832,8 +844,9 @@ export default function PageShell({ type }: PageShellProps) {
                   <div>
                     <p className="font-semibold text-slate-900">Alamat</p>
                     <p className="text-slate-600">
-                      Jl. Gubeng Pojok No.1, Ketabang, Kec. Genteng, Surabaya,
-                      Jawa Timur 60272
+                      Grand City Convention and Exhibition, Ballroom Lt. 4, Jl.
+                      Gubeng Pojok No.1, Ketabang, Kec. Genteng, Surabaya, Jawa
+                      Timur 60272
                     </p>
                   </div>
                 </div>
