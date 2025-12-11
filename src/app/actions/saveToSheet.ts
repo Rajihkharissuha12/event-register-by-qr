@@ -10,6 +10,7 @@ export async function saveToGoogleSheets(data: {
   ticketType: "regular" | "vip";
   qrImageUrl?: string;
   kuota?: number;
+  company?: string;
   sponsorPackage?: string;
 }) {
   try {
@@ -39,6 +40,7 @@ export async function saveToGoogleSheets(data: {
             data.qrImageUrl, // QR Image URL
             data.kuota, // Kuota
             data.sponsorPackage, // Sponsor Package
+            data.company, // Company
           ],
         ],
       },

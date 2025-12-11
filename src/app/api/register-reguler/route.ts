@@ -61,6 +61,7 @@ export async function POST(req: Request) {
       name: body.name,
       email: body.email,
       phone: body.phone,
+      company: body.company,
       ticketType: "reguler" as const,
     };
 

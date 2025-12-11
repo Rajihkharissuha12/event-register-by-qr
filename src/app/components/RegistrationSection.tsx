@@ -10,6 +10,7 @@ interface FormData {
   email?: string;
   phone?: string;
   ticketType: "regular" | "vip";
+  company?: string;
 }
 
 export type TicketType = "regular" | "vip";
@@ -85,6 +86,7 @@ export default function RegistrationSection({
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
+          company: formData.company,
           amount: amount,
         }),
       });
@@ -632,6 +634,14 @@ function ModalForm({
               value={formData.name}
               onChange={onInputChange}
               placeholder="Masukkan nama lengkap"
+            />
+            <InputField
+              label="Nama Perusahaan / Instansi"
+              name="company"
+              type="text"
+              value={formData.company || ""}
+              onChange={onInputChange}
+              placeholder="Masukkan nama company"
             />
             <InputField
               label="Email"

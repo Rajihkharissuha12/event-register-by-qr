@@ -88,6 +88,7 @@ export default function PageShell({ type }: PageShellProps) {
           email: registrationData.email,
           phone: registrationData.phone,
           ticketType: registrationData.ticketType,
+          company: registrationData.company,
         };
 
         const encoded = encodeTicketPayload(payload);
@@ -262,6 +263,14 @@ export default function PageShell({ type }: PageShellProps) {
                 </span>
                 <span className="text-sm text-slate-900">
                   {registrationData?.name}
+                </span>
+              </div>
+              <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+                <span className="text-sm font-semibold text-slate-600">
+                  Nama Perusahaan:
+                </span>
+                <span className="text-sm text-slate-900">
+                  {registrationData?.company}
                 </span>
               </div>
               <div className="flex justify-between items-center border-b border-slate-200 pb-2">
