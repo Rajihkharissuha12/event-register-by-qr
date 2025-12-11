@@ -1117,14 +1117,25 @@ export default function PageShell({ type }: PageShellProps) {
               </h4>
               <div className="space-y-2 text-slate-400">
                 <p>
-                  WhatsApp Sekretariat:{" "}
+                  WhatsApp Sekretariat 1:{" "}
                   <a
                     href="https://wa.me/628563019952?text=Halo%20kak%2C%20mau%20bertanya%20...."
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-500 underline"
                   >
-                    +62 856-3019-952
+                    0856-3019-952
+                  </a>
+                </p>
+                <p>
+                  WhatsApp Sekretariat 2:{" "}
+                  <a
+                    href="https://wa.me/62895343401547?text=Halo%20kak%2C%20mau%20bertanya%20...."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-500 underline"
+                  >
+                    0895-3434-01547
                   </a>
                 </p>
                 <p>Lokasi: Ballroom Grand City, Surabaya</p>

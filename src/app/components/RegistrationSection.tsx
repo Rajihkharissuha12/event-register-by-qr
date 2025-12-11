@@ -425,7 +425,7 @@ interface TicketCardProps {
 
 function TicketCard({ onBuyClick, regularCount, maxRegular }: TicketCardProps) {
   const benefits = [
-    "Akses ke seluruh sesi konferensi hari pertama",
+    "Akses ke seluruh sesi konferensi",
     "Sertifikat eksklusif National Sugar Summit 2025",
     "Coffee break dan lunch break",
     "Akses ke exhibition & booth expo",
@@ -468,7 +468,7 @@ function TicketCard({ onBuyClick, regularCount, maxRegular }: TicketCardProps) {
           <div className="col-span-2">
             <p className="text-slate-500 text-xs uppercase mb-1">Lokasi</p>
             <p className="text-slate-900 font-semibold">
-              Ballroom Grand City, Surabaya
+              Grand City Convention and Exhibition, Ballroom Lt. 4, Surabaya
             </p>
           </div>
         </div>
