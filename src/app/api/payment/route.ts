@@ -47,8 +47,8 @@ export async function POST(
         first_name: name,
         email: email,
         phone: phone,
-        company: company,
       },
+      custom_field1: company,
     };
 
     // Gunakan createTransaction untuk mendapatkan token DAN redirect_url

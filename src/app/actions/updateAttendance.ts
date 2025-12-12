@@ -2,7 +2,10 @@
 
 import { google } from "googleapis";
 
-export async function updateAttendanceStatus(registrationId: string) {
+export async function updateAttendanceStatus(
+  registrationId: string,
+  registrationType: "vip" | "reguler"
+) {
   try {
     const auth = new google.auth.JWT({
       email: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
@@ -11,12 +14,11 @@ export async function updateAttendanceStatus(registrationId: string) {
     });
 
     const sheets = google.sheets({ version: "v4", auth });
-
     // A: ID, B: NAMA, C: EMAIL, D: NO HP, E: Type, F: Tgl Regist,
     // G: Status Kehadiran, H: Tgl Checkin, I: Link QR, J: Kuota, K: Kategori
     const getResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "Sheet1!A:K",
+      range: registrationType === "vip" ? "Vip!A:K" : "Reguler!A:K",
     });
 
     const normalizeId = (id: string) => String(Number(id));
@@ -60,7 +62,7 @@ export async function updateAttendanceStatus(registrationId: string) {
     }
 
     // jika ada angka kuota dan sudah 0 → tolak checkin
-    if (kuotaRaw !== undefined && currentKuota <= 0) {
+    if (type === "vip" && kuotaRaw !== undefined && currentKuota <= 0) {
       return {
         success: false,
         error: `Check-in untuk sponsor "${name}" sudah maksimal.`,
@@ -85,16 +87,19 @@ export async function updateAttendanceStatus(registrationId: string) {
       row[3], // D: NO HP
       row[4], // E: Type
       row[5], // F: Tanggal Regist
-      "HADIR", // G: Status Kehadiran
+      status === "Tidak Hadir" ? "Belum Hadir" : "HADIR", // G: Status Kehadiran
       now, // H: Tanggal Checkin
       row[8], // I: Link QR
-      newKuota, // J: Kuota
+      status === "Tidak Hadir" ? kuotaRaw : newKuota, // J: Kuota
       row[10], // K: Kategori
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: `Sheet1!A${rowIndex}:K${rowIndex}`,
+      range:
+        registrationType === "vip"
+          ? `Vip!A${rowIndex}:K${rowIndex}`
+          : `Reguler!A${rowIndex}:K${rowIndex}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [updatedRow],

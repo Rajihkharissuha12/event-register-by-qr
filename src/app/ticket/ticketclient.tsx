@@ -131,22 +131,27 @@ export default function TicketPageClient() {
                 {registrationData.name}
               </span>
             </div>
-            <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-              <span className="text-sm font-semibold text-slate-600">
-                Nama Perusahaan:
-              </span>
-              <span className="text-sm text-slate-900">
-                {registrationData?.company}
-              </span>
-            </div>
-            <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-              <span className="text-sm font-semibold text-slate-600">
-                Email:
-              </span>
-              <span className="text-sm text-slate-900">
-                {registrationData.email}
-              </span>
-            </div>
+            {registrationData.type === "vip" ? null : (
+              <>
+                <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+                  <span className="text-sm font-semibold text-slate-600">
+                    Nama Perusahaan:
+                  </span>
+                  <span className="text-sm text-slate-900">
+                    {registrationData?.company}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+                  <span className="text-sm font-semibold text-slate-600">
+                    Email:
+                  </span>
+                  <span className="text-sm text-slate-900">
+                    {registrationData.email}
+                  </span>
+                </div>
+              </>
+            )}
+
             <div className="flex justify-between items-center">
               <span className="text-sm font-semibold text-slate-600">
                 WhatsApp:

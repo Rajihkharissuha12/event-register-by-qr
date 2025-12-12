@@ -8,8 +8,9 @@ const auth = new google.auth.JWT({
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
 });
 
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 const SHEET_ID = process.env.GOOGLE_SHEET_ID!;
-const RANGE = "Sheet1!A:H"; // contoh 8 kolom
+const RANGE = "Vip!A:H"; // contoh 8 kolom
 
 export async function POST(req: Request) {
   try {
@@ -20,9 +21,17 @@ export async function POST(req: Request) {
     });
 
     const inputName = String(body.name || "").trim();
+    const inputNoHp = String(body.phone || "").trim();
+
     if (!inputName) {
       return NextResponse.json(
         { success: false, error: "Nama wajib diisi" },
+        { status: 400 }
+      );
+    }
+    if (!inputNoHp) {
+      return NextResponse.json(
+        { success: false, error: "Nomor HP wajib diisi" },
         { status: 400 }
       );
     }
@@ -33,7 +42,7 @@ export async function POST(req: Request) {
     // 1) ambil semua data (ID, Nama, ticketType) untuk cek duplikat + nomor terbesar
     const readRes = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "Sheet1!A:E", // A: ID, B: Nama, ..., E: ticketType (sesuaikan)
+      range: "Vip!A:E", // A: ID, B: Nama, ..., E: ticketType (sesuaikan)
     });
 
     const rows = readRes.data.values || [];
@@ -81,30 +90,103 @@ export async function POST(req: Request) {
       id: newId,
       name: inputName,
       email: body.email ?? "",
-      phone: body.phone ?? "",
+      phone: inputNoHp ?? "",
       ticketType: "vip" as const,
     };
 
-    // 3) append row dengan ID baru (uncomment kalau sudah siap tulis ke sheet)
-    // await sheets.spreadsheets.values.append({
-    //   spreadsheetId: SHEET_ID,
-    //   range: RANGE,
-    //   valueInputOption: "USER_ENTERED",
-    //   requestBody: {
-    //     values: [[
-    //       data.id,        // A: ID
-    //       data.name,      // B: Nama
-    //       data.email,     // C: Email
-    //       data.phone,     // D: Phone
-    //       data.ticketType // E: ticketType
-    //       // tambah kolom lain (F–H) kalau perlu
-    //     ]],
-    //   },
-    // });
+    // 3) Validasi Perusahaan
+    const sponsorRes = await fetch(`${baseUrl}/api/sponsor-package`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: inputName }),
+    });
 
-    return NextResponse.json({ success: true, data });
+    const sponsorJson = await sponsorRes.json();
+
+    if (!sponsorJson.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Sponsor VIP tidak valid atau paket tidak ditemukan.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const sponsorPackage = sponsorJson.package;
+    const kuota = sponsorJson.kuota ?? undefined;
+
+    function encodeTicketPayload(data: any) {
+      const json = JSON.stringify(data);
+      // browser-safe base64 (URL-safe)
+      const b64 = btoa(json)
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/g, "");
+      return b64;
+    }
+
+    const payload = {
+      id: data.id,
+      name: body.name,
+      phone: body.phone,
+      type: "vip",
+    };
+
+    const encoded = encodeTicketPayload(payload);
+    const ticketUrl = `${baseUrl}/ticket?d=${encoded}`;
+
+    const message =
+      `Yang Terhormat Bapak/Ibu sebagai Sponsor VIP kategori ${sponsorPackage},\n\n` +
+      "Terima kasih atas dukungan Bapak/Ibu dalam acara National Sugar Summit 2025.\n\n" +
+      "Berikut adalah link VIP e-ticket Bapak/Ibu:\n" +
+      ticketUrl +
+      "\n\nMohon ditunjukkan kepada petugas saat memasuki area acara.\n" +
+      "Kami sangat mengapresiasi partisipasi dan kehadiran Bapak/Ibu.";
+
+    const waLink = `https://wa.me/${data.phone.replace(
+      /^0/,
+      "62"
+    )}?text=${encodeURIComponent(message)}`;
+
+    // 3) append row dengan ID baru (uncomment kalau sudah siap tulis ke sheet)
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: RANGE,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [
+          [
+            data.id, // A: ID
+            data.name, // B: Nama
+            data.email, // C: Email
+            data.phone, // D: Phone
+            "vip", // E: ticketType
+            new Date().toISOString().split("T")[0],
+            "Tidak Hadir",
+            "",
+            ticketUrl,
+            kuota,
+            sponsorPackage,
+            waLink,
+          ],
+        ],
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: data.id,
+        name: inputName,
+        phone: inputNoHp,
+        kuota: kuota,
+        kategori: sponsorPackage,
+        type: "vip",
+      },
+    });
   } catch (err) {
-    // console.error(err);
+    console.error(err);
     return NextResponse.json(
       { success: false, error: "Failed to register VIP" },
       { status: 500 }

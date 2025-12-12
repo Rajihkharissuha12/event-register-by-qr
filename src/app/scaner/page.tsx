@@ -28,7 +28,10 @@ export default function ScannerPage() {
         return;
       }
       // Update attendance status
-      const updateResult = await updateAttendanceStatus(scannedData.id);
+      const updateResult = await updateAttendanceStatus(
+        scannedData.id,
+        scannedData.type === "vip" ? "vip" : "reguler"
+      );
 
       if (updateResult.success) {
         setResult({

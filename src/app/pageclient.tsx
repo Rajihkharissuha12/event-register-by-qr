@@ -7,6 +7,8 @@ import RegistrationSection, {
 import { generateQrDataUrl } from "./utils/generateQrDataUrl";
 import { saveToGoogleSheets } from "./actions/saveToSheet";
 import * as htmlToImage from "html-to-image";
+import { updateAttendanceStatus } from "./actions/updateAttendance";
+import { deleteVipRegistration } from "./api/delete-vip/route";
 
 type PageShellProps = {
   type: TicketType;
@@ -27,124 +29,157 @@ export default function PageShell({ type }: PageShellProps) {
   const [error, setError] = useState("");
   const [ticketType, setTicketType] = useState("regular"); // 'regular' or 'vip'
   const [isUploadingQr, setIsUploadingQr] = useState(false);
+  const [showVipConfirm, setShowVipConfirm] = useState(false);
+  const [willAttend, setWillAttend] = useState(false);
+  const [vipData, setVipData] = useState({
+    company: "",
+    kuota: 0,
+    kategori: "",
+    package: "",
+  } as any);
+  const [isPreparingTicket, setIsPreparingTicket] = useState(false);
 
-  const handleRegisterSuccess = (data: any) => {
-    // console.log("HANDLE REGISTER SUCCESS", data); // debug
+  const handleRegisterSuccess = async (data: any) => {
+    setIsPreparingTicket(true);
     setRegistrationData(data);
-    setIsSubmitted(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // Jika VIP, tampilkan konfirmasi dulu
+    if (data.type === "vip") {
+      try {
+        setTimeout(() => {
+          setVipData({
+            company: data.name || "",
+            kuota: data.kuota ?? 0,
+            kategori: data.kategori || "",
+            package: data.package || "",
+          });
+          setShowVipConfirm(true);
+          setIsPreparingTicket(false);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }, 1200);
+      } catch (e) {
+        setError("Gagal memuat data VIP.");
+      }
+    } else {
+      // Regular langsung ke QR
+      setTimeout(() => {
+        setIsSubmitted(true); // baru tampilkan QR page
+        setIsPreparingTicket(false); // matikan loading
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }, 1200);
+    }
   };
 
-  useEffect(() => {
-    const autoUploadQr = async () => {
-      if (!isSubmitted || !registrationData) return;
-      if (isUploadingQr) return; // cegah double
-      if (registrationData.qrImageUrl) return;
+  // useEffect(() => {
+  //   const autoUploadQr = async () => {
+  //     if (!isSubmitted || !registrationData) return;
+  //     if (isUploadingQr) return; // cegah double
+  //     if (registrationData.qrImageUrl) return;
 
-      try {
-        setIsUploadingQr(true);
+  //     try {
+  //       setIsUploadingQr(true);
 
-        // 1) generate QR dari Cuer (DOM sudah render karena isSubmitted true)
-        const qrDataUrl = await generateQrDataUrl();
-        if (!qrDataUrl) {
-          setError("Gagal generate QR dari Cuer.");
-          return;
-        }
+  //       // 1) generate QR dari Cuer (DOM sudah render karena isSubmitted true)
+  //       const qrDataUrl = await generateQrDataUrl();
+  //       if (!qrDataUrl) {
+  //         setError("Gagal generate QR dari Cuer.");
+  //         return;
+  //       }
 
-        // 2) upload ke Cloudinary
-        const uploadRes = await fetch("/api/upload-qr", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            image: qrDataUrl,
-            publicId: registrationData.id,
-          }),
-        });
+  //       // 2) upload ke Cloudinary
+  //       const uploadRes = await fetch("/api/upload-qr", {
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({
+  //           image: qrDataUrl,
+  //           publicId: registrationData.id,
+  //         }),
+  //       });
 
-        const uploadJson = await uploadRes.json();
-        if (!uploadJson.success) {
-          setError("Gagal upload QR ke Cloudinary.");
-          return;
-        }
+  //       const uploadJson = await uploadRes.json();
+  //       if (!uploadJson.success) {
+  //         setError("Gagal upload QR ke Cloudinary.");
+  //         return;
+  //       }
 
-        const qrImageUrl = uploadJson.url;
+  //       const qrImageUrl = uploadJson.url;
 
-        function encodeTicketPayload(data: any) {
-          const json = JSON.stringify(data);
-          // browser-safe base64 (URL-safe)
-          const b64 = btoa(json)
-            .replace(/\+/g, "-")
-            .replace(/\//g, "_")
-            .replace(/=+$/g, "");
-          return b64;
-        }
+  //       function encodeTicketPayload(data: any) {
+  //         const json = JSON.stringify(data);
+  //         // browser-safe base64 (URL-safe)
+  //         const b64 = btoa(json)
+  //           .replace(/\+/g, "-")
+  //           .replace(/\//g, "_")
+  //           .replace(/=+$/g, "");
+  //         return b64;
+  //       }
 
-        const baseUrl =
-          process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  //       const baseUrl =
+  //         process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 
-        const payload = {
-          id: registrationData.id,
-          name: registrationData.name,
-          email: registrationData.email,
-          phone: registrationData.phone,
-          ticketType: registrationData.ticketType,
-          company: registrationData.company,
-        };
+  //       const payload = {
+  //         id: registrationData.id,
+  //         name: registrationData.name,
+  //         email: registrationData.email,
+  //         phone: registrationData.phone,
+  //         ticketType: registrationData.ticketType,
+  //         company: registrationData.company,
+  //       };
 
-        const encoded = encodeTicketPayload(payload);
+  //       const encoded = encodeTicketPayload(payload);
 
-        const ticketUrl = `${baseUrl}/ticket?d=${encoded}`;
+  //       const ticketUrl = `${baseUrl}/ticket?d=${encoded}`;
 
-        // === tambahkan blok ini ===
-        let kuota: number | undefined;
-        let sponsorPackage: string | undefined;
+  //       // === tambahkan blok ini ===
+  //       let kuota: number | undefined;
+  //       let sponsorPackage: string | undefined;
 
-        if (registrationData.ticketType === "vip") {
-          const sponsorRes = await fetch("/api/sponsor-package", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: registrationData.name }),
-          });
+  //       if (registrationData.ticketType === "vip") {
+  //         const sponsorRes = await fetch("/api/sponsor-package", {
+  //           method: "POST",
+  //           headers: { "Content-Type": "application/json" },
+  //           body: JSON.stringify({ name: registrationData.name }),
+  //         });
 
-          const sponsorJson = await sponsorRes.json();
+  //         const sponsorJson = await sponsorRes.json();
 
-          if (!sponsorJson.success) {
-            setError("Sponsor VIP tidak valid atau paket tidak ditemukan.");
-            return;
-          }
+  //         if (!sponsorJson.success) {
+  //           setError("Sponsor VIP tidak valid atau paket tidak ditemukan.");
+  //           return;
+  //         }
 
-          sponsorPackage = sponsorJson.package;
-          kuota = sponsorJson.kuota ?? undefined;
-        }
+  //         sponsorPackage = sponsorJson.package;
+  //         kuota = sponsorJson.kuota ?? undefined;
+  //       }
 
-        // 3) simpan ke Google Sheets (dengan field qrImageUrl)
-        await saveToGoogleSheets({
-          ...registrationData,
-          qrImageUrl: ticketUrl,
-          kuota,
-          sponsorPackage,
-        });
+  //       // 3) simpan ke Google Sheets (dengan field qrImageUrl)
+  //       await saveToGoogleSheets({
+  //         ...registrationData,
+  //         qrImageUrl: ticketUrl,
+  //         kuota,
+  //         sponsorPackage,
+  //       });
 
-        // optional: update state lokal
-        setRegistrationData((prev: any) => ({
-          ...prev,
-          qrImageUrl: ticketUrl,
-        }));
-      } catch (e) {
-        // console.error(e);
-        setError("Terjadi kesalahan saat upload QR.");
-      } finally {
-        setIsUploadingQr(false);
-      }
-    };
+  //       // optional: update state lokal
+  //       setRegistrationData((prev: any) => ({
+  //         ...prev,
+  //         qrImageUrl: ticketUrl,
+  //       }));
+  //     } catch (e) {
+  //       // console.error(e);
+  //       setError("Terjadi kesalahan saat upload QR.");
+  //     } finally {
+  //       setIsUploadingQr(false);
+  //     }
+  //   };
 
-    // tunda sedikit supaya Cuer benar-benar sudah render SVG
-    const timer = setTimeout(() => {
-      autoUploadQr();
-    }, 300); // 300ms
+  //   // tunda sedikit supaya Cuer benar-benar sudah render SVG
+  //   const timer = setTimeout(() => {
+  //     autoUploadQr();
+  //   }, 300); // 300ms
 
-    return () => clearTimeout(timer);
-  }, [registrationData]);
+  //   return () => clearTimeout(timer);
+  // }, [registrationData]);
 
   // Countdown Timer
   useEffect(() => {
@@ -181,6 +216,230 @@ export default function PageShell({ type }: PageShellProps) {
       link.click();
     });
   };
+
+  if (isPreparingTicket) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-10 max-w-md w-full text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-4">
+            <svg
+              className="w-8 h-8 text-amber-500 animate-spin"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+                fill="none"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0a12 12 0 00-12 12h4z"
+              />
+            </svg>
+          </div>
+          <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-2">
+            Menyiapkan Tiket Anda
+          </h2>
+          <p className="text-slate-600 text-sm">
+            Mohon tunggu sebentar, sistem sedang membuat QR e-ticket untuk Anda.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // VIP Confirmation Page
+  if (showVipConfirm && registrationData?.type === "vip") {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-16">
+        <div className="max-w-2xl w-full bg-white shadow-xl rounded-2xl p-8 md:p-12 border border-slate-200">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full mb-6 shadow-lg">
+              <svg
+                className="w-10 h-10 text-white fill-current"
+                viewBox="0 0 24 24"
+              >
+                <path d="M20.285 2l-1.715 8.891a1 1 0 01-.97.691H4.395a1 1 0 01-.965-.789L2 2h18.285zM11 13a2 2 0 012 2v5a2 2 0 01-2 2h-2a2 2 0 01-2-2v-5a2 2 0 012-2h2z" />
+              </svg>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-3">
+              Konfirmasi Kehadiran VIP
+            </h2>
+            <p className="text-slate-600 text-lg max-w-md mx-auto">
+              Harap konfirmasi kehadiran Anda untuk mendapatkan tiket QR
+            </p>
+          </div>
+
+          {/* VIP Package Info */}
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-4 border-amber-500 rounded-2xl p-8 mb-10">
+            <p className="text-xs font-bold text-amber-800 mb-6 uppercase tracking-wider text-center">
+              Detail Paket VIP
+            </p>
+
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
+              <div className="bg-white border-2 border-slate-100 p-6 rounded-xl">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-3 h-3 bg-amber-500 rounded-full" />
+                  <span className="font-semibold text-slate-900 text-sm uppercase tracking-wide">
+                    Nama Perusahaan
+                  </span>
+                </div>
+                <p className="text-xl font-bold text-slate-900">
+                  {vipData.company}
+                </p>
+              </div>
+
+              <div className="bg-white border-2 border-slate-100 p-6 rounded-xl">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-3 h-3 bg-amber-500 rounded-full" />
+                  <span className="font-semibold text-slate-900 text-sm uppercase tracking-wide">
+                    Kuota Tersedia
+                  </span>
+                </div>
+                <p className="text-2xl font-bold text-amber-600">
+                  {vipData.kuota}
+                  <span className="text-sm text-slate-500 ml-2">slot</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div className="bg-slate-900 text-white p-4 rounded-xl">
+                <span className="text-xs uppercase tracking-wider block mb-1 opacity-75">
+                  Kategori
+                </span>
+                <span className="font-bold text-lg">{vipData.kategori}</span>
+              </div>
+              {/* <div className="bg-slate-900 text-white p-4 rounded-xl">
+                <span className="text-xs uppercase tracking-wider block mb-1 opacity-75">
+                  Paket
+                </span>
+                <span className="font-bold text-lg">{vipData.package}</span>
+              </div> */}
+            </div>
+          </div>
+
+          {/* Benefits */}
+          <div className="bg-slate-50 border-l-4 border-amber-500 p-8 rounded-r-2xl mb-10">
+            <p className="text-sm font-bold text-slate-900 mb-6 uppercase tracking-wide flex items-center gap-2">
+              <svg
+                className="w-5 h-5 text-amber-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Benefit VIP yang Anda Dapatkan
+            </p>
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              {["ID card", "Kupon", "Goodie Bag"].map((benefit, idx) => (
+                <li
+                  key={idx}
+                  className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200"
+                >
+                  <div className="w-2 h-2 bg-amber-500 rounded-full" />
+                  <span className="font-medium text-slate-900">{benefit}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Attendance Checkbox */}
+          <div className="bg-gradient-to-b from-slate-50 to-white border-2 border-slate-200 p-8 rounded-2xl mb-10">
+            <label
+              className="flex items-center gap-4 cursor-pointer group"
+              onClick={() => setWillAttend(!willAttend)}
+            >
+              <div
+                className={`w-6 h-6 border-2 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors
+              ${
+                willAttend
+                  ? "border-amber-500 bg-amber-500"
+                  : "border-slate-400 group-hover:border-amber-500"
+              }`}
+              >
+                {willAttend && (
+                  <svg
+                    className="w-4 h-4 text-white"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+              </div>
+              <span className="text-lg font-semibold text-slate-900">
+                Saya akan hadir di National Sugar Summit 2025
+              </span>
+            </label>
+            <p className="text-sm text-slate-600 mt-2 ml-10">
+              Centang untuk mendapatkan tiket QR
+            </p>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              onClick={async () => {
+                setIsPreparingTicket(true);
+                try {
+                  // sukses → tutup halaman konfirmasi dan tampilkan QR
+                  if (willAttend) {
+                    const res = await updateAttendanceStatus(
+                      String(registrationData.id),
+                      "vip"
+                    );
+
+                    if (!res.success) {
+                      setError(res.error || "Gagal konfirmasi kehadiran VIP");
+                      return;
+                    }
+
+                    setShowVipConfirm(false);
+                    setIsSubmitted(true);
+                    setWillAttend(false);
+                    setIsPreparingTicket(false);
+                  } else {
+                    const res = await deleteVipRegistration(
+                      String(registrationData.id)
+                    );
+
+                    if (!res.success) {
+                      setError(res.error || "Gagal delete data VIP");
+                      return;
+                    }
+                    setShowVipConfirm(false);
+                    setRegistrationData(null);
+                  }
+
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                } catch (e) {
+                  setError("Terjadi kesalahan saat konfirmasi kehadiran");
+                }
+              }}
+              className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-900 font-bold py-4 px-8 rounded-xl transition-all duration-200 uppercase tracking-wide text-sm shadow-lg hover:shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Konfirmasi & Lihat Tiket QR
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // QR Code View
   if (isSubmitted) {
@@ -265,22 +524,27 @@ export default function PageShell({ type }: PageShellProps) {
                   {registrationData?.name}
                 </span>
               </div>
-              <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                <span className="text-sm font-semibold text-slate-600">
-                  Nama Perusahaan:
-                </span>
-                <span className="text-sm text-slate-900">
-                  {registrationData?.company}
-                </span>
-              </div>
-              <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                <span className="text-sm font-semibold text-slate-600">
-                  Email:
-                </span>
-                <span className="text-sm text-slate-900">
-                  {registrationData?.email}
-                </span>
-              </div>
+              {registrationData?.type === "vip" ? null : (
+                <>
+                  <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+                    <span className="text-sm font-semibold text-slate-600">
+                      Nama Perusahaan:
+                    </span>
+                    <span className="text-sm text-slate-900">
+                      {registrationData?.company}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+                    <span className="text-sm font-semibold text-slate-600">
+                      Email:
+                    </span>
+                    <span className="text-sm text-slate-900">
+                      {registrationData?.email}
+                    </span>
+                  </div>
+                </>
+              )}
+
               <div className="flex justify-between items-center">
                 <span className="text-sm font-semibold text-slate-600">
                   WhatsApp:

@@ -5,11 +5,13 @@ import { PaymentResponse, MidtransResult } from "@/types/midtrans";
 import { saveToGoogleSheets } from "../actions/saveToSheet";
 import { generateQrDataUrl } from "../utils/generateQrDataUrl";
 
+type VipCategory = "diamond" | "platinum" | "gold" | "";
+
 interface FormData {
   name: string;
   email?: string;
   phone?: string;
-  ticketType: "regular" | "vip";
+  type: "regular" | "vip";
   company?: string;
 }
 
@@ -24,6 +26,63 @@ interface RegistrationSectionProps {
   }) => void;
 }
 
+interface ModalFormProps {
+  formData: FormData;
+  error: string;
+  isLoading: boolean;
+  onClose: () => void;
+  onInputChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
+}
+
+const VIP_CATEGORY_OPTIONS = [
+  { value: "", label: "Pilih kategori" },
+  { value: "diamond", label: "Diamond" },
+  { value: "platinum", label: "Platinum" },
+  { value: "gold", label: "Gold" },
+];
+
+const VIP_COMPANIES: Record<VipCategory, string[]> = {
+  "": [],
+  diamond: [
+    "PT Laju Brata",
+    "PT Acme Indonesia",
+    "PT Golden Pratama Gemilang",
+    "PT Intidaya Dinamika Sejati",
+    "PT Samsung Electronics Indonesia",
+    "PT Bank Negara Indonesia (Persero) Tbk",
+    "PT Kebon Agung",
+    "PT Aludra Solusi Indonesia",
+  ],
+  platinum: [
+    "PT Cipta Teknik Abadi",
+    "PT Energi Lidah Api",
+    "PT Megah Inti Lestari - Dart Rich",
+    "PT Indo Buana Mas",
+    "PT Indo Acidatama, Tbk.",
+    "PT Eonchemicals putra",
+    "PT Agros Global Indonesia",
+    "PT Altrak 1978",
+    "PT. Triatra Sinergia Pratama",
+    "PT Molindo Raya Indusrtrial, Tbk",
+  ],
+  gold: [
+    "CV Guna Indah",
+    "PT Surya Agrimas Nusantara",
+    "PT Agro Prima Sentosa",
+    "PT Candra Wijaya Sakti",
+    "CV Tritunggal Sejahtera Lestari",
+    "PT Jalutama Wisesa",
+    "PT Asuransi Jasa Tania Tbk.",
+    "PT Petrokimia Gresik",
+    "PT Peter Cremer Indonesia",
+    "CV Mitra Tani",
+    "CV Indica Multi Karya",
+    "PT PG Rajawali I",
+    "PT Arrow Energi",
+  ],
+};
+
 export default function RegistrationSection({
   onRegisterSuccess,
   type,
@@ -34,11 +93,12 @@ export default function RegistrationSection({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState<string>("");
   const [showModal, setShowModal] = useState<boolean>(false);
+  const [vipCategory, setVipCategory] = useState<VipCategory>("");
   const [formData, setFormData] = useState<FormData>({
     name: "",
     email: "",
     phone: "",
-    ticketType: "regular" as const,
+    type: "regular" as const,
   });
 
   const MAX_REGULAR = 50;
@@ -59,7 +119,13 @@ export default function RegistrationSection({
     fetchCount();
   }, []);
 
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
+  // const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
+  //   const { name, value } = e.target;
+  //   setFormData((prev) => ({ ...prev, [name]: value }));
+  // };
+  const handleInputChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ): void => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -128,7 +194,7 @@ export default function RegistrationSection({
               name: "",
               email: "",
               phone: "",
-              ticketType: "regular",
+              type: "regular",
             });
           },
           onPending: (result: MidtransResult) => {
@@ -212,12 +278,28 @@ export default function RegistrationSection({
 
     try {
       const inputNameRaw = formData.name;
+      const inputNoHp = formData.phone;
 
       const normalize = (s: string) =>
         s
           .trim()
           .toLowerCase()
           .replace(/[^a-z0-9]/g, ""); // hanya huruf a-z dan angka 0-9
+
+      // validasi dasar nomor HP Indonesia: +62 / 62 / 0, panjang 10–13 digit
+      const isValidIndoPhone = (phone: string) => {
+        const cleaned = phone.replace(/[^0-9+]/g, "");
+        const regex = /^(?:\+62|62|0)[2-9][0-9]{7,11}$/; // awalan +62/62/0, min 10 digit, max 13
+        return regex.test(cleaned);
+      };
+
+      if (!isValidIndoPhone(String(inputNoHp))) {
+        setError(
+          "Nomor HP tidak valid. Gunakan format Indonesia, misalnya 0812xxxxxxx atau +62812xxxxxxx."
+        );
+        setIsLoading(false);
+        return;
+      }
 
       // 1) fetch list sponsor dari API / Google Sheets
       const sponsorRes = await fetch("/api/sponsors");
@@ -251,7 +333,7 @@ export default function RegistrationSection({
         body: JSON.stringify({
           name: inputNameRaw,
           email: "",
-          phone: "",
+          phone: inputNoHp,
         }),
       });
 
@@ -273,7 +355,7 @@ export default function RegistrationSection({
         name: "",
         email: "",
         phone: "",
-        ticketType: "vip",
+        type: "vip",
       });
 
       onRegisterSuccess(json.data);
@@ -377,6 +459,11 @@ export default function RegistrationSection({
               formData={formData}
               error={error}
               isLoading={isLoading}
+              vipCategory={vipCategory}
+              onCategoryChange={(value) => {
+                setVipCategory(value);
+                setFormData((prev) => ({ ...prev, name: "" })); // reset perusahaan ketika kategori ganti
+              }}
               onInputChange={handleInputChange}
               onSubmit={handleVipCheckout}
             />
@@ -390,7 +477,11 @@ export default function RegistrationSection({
           formData={formData}
           error={error}
           isLoading={isLoading}
-          onClose={() => setShowModal(false)}
+          onClose={() => {
+            setError("");
+            setFormData({ name: "", email: "", phone: "", type: "regular" });
+            setShowModal(false);
+          }}
           onInputChange={handleInputChange}
           onSubmit={handleRegularCheckout}
         />
@@ -510,11 +601,13 @@ function TicketCard({ onBuyClick, regularCount, maxRegular }: TicketCardProps) {
 }
 
 // VIP Form Component
-interface FormProps {
+interface VipFormProps {
   formData: FormData;
   error: string;
   isLoading: boolean;
-  onInputChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  vipCategory: VipCategory;
+  onCategoryChange: (value: VipCategory) => void;
+  onInputChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
 }
 
@@ -522,9 +615,13 @@ function VipForm({
   formData,
   error,
   isLoading,
+  vipCategory,
+  onCategoryChange,
   onInputChange,
   onSubmit,
-}: FormProps) {
+}: VipFormProps) {
+  const companyOptions = VIP_COMPANIES[vipCategory] || [];
+
   return (
     <div className="bg-white rounded-xl shadow-2xl overflow-hidden">
       <div className="bg-gradient-to-r from-amber-500 to-amber-400 p-6 text-center">
@@ -538,13 +635,59 @@ function VipForm({
         <form onSubmit={onSubmit} className="space-y-5">
           {error && <ErrorMessage message={error} />}
 
+          {/* Kategori sponsor (tidak masuk formData) */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Kategori Sponsor <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={vipCategory}
+              onChange={(e) => onCategoryChange(e.target.value as VipCategory)}
+              className="select-arrow text-black w-full px-4 py-3 border border-slate-300 rounded-lg focus:border-slate-900 focus:ring-2 focus:ring-slate-100 focus:outline-none transition"
+              required
+            >
+              <option value="">Pilih kategori</option>
+              <option value="diamond">Diamond</option>
+              <option value="platinum">Platinum</option>
+              <option value="gold">Gold</option>
+            </select>
+          </div>
+
+          {/* Nama perusahaan (masuk ke formData.name) */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Nama Perusahaan <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="name"
+              value={formData.name}
+              onChange={onInputChange}
+              disabled={!vipCategory}
+              className="select-arrow text-black w-full px-4 py-3 border border-slate-300 rounded-lg focus:border-slate-900 focus:ring-2 focus:ring-slate-100 focus:outline-none transition disabled:bg-slate-100"
+              required
+            >
+              <option value="">
+                {vipCategory
+                  ? "Pilih perusahaan"
+                  : "Pilih kategori terlebih dahulu"}
+              </option>
+              {companyOptions.map((company) => (
+                <option key={company} value={company}>
+                  {company}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Nomor HP (masuk ke formData.phone) */}
           <InputField
-            label="Nama Sponsor"
-            name="name"
-            type="text"
-            value={formData.name}
+            label="Nomor HP"
+            name="phone"
+            type="tel"
+            value={formData.phone || ""}
             onChange={onInputChange}
-            placeholder="Masukkan nama sponsor"
+            placeholder="Masukkan nomor HP penanggung jawab"
+            disabled={!formData.name} // wajib pilih perusahaan dulu
           />
 
           <SubmitButton
@@ -558,10 +701,10 @@ function VipForm({
   );
 }
 
-// Modal Form Component
-interface ModalFormProps extends FormProps {
-  onClose: () => void;
-}
+// // Modal Form Component
+// interface ModalFormProps extends FormProps {
+//   onClose: () => void;
+// }
 
 function ModalForm({
   formData,
@@ -675,6 +818,7 @@ interface InputFieldProps {
   value: string;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   placeholder: string;
+  disabled?: boolean;
 }
 
 function InputField({
@@ -684,6 +828,7 @@ function InputField({
   value,
   onChange,
   placeholder,
+  disabled,
 }: InputFieldProps) {
   return (
     <div>
@@ -696,7 +841,8 @@ function InputField({
         value={value}
         onChange={onChange}
         required
-        className="text-black w-full px-4 py-3 border border-slate-300 rounded-lg focus:border-slate-900 focus:ring-2 focus:ring-slate-100 focus:outline-none transition"
+        disabled={disabled}
+        className="text-black w-full px-4 py-3 border border-slate-300 rounded-lg focus:border-slate-900 focus:ring-2 focus:ring-slate-100 focus:outline-none transition disabled:bg-slate-100 disabled:cursor-not-allowed"
         placeholder={placeholder}
       />
     </div>

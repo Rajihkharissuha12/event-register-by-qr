@@ -8,8 +8,9 @@ const auth = new google.auth.JWT({
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
 });
 
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 const SHEET_ID = process.env.GOOGLE_SHEET_ID!;
-const RANGE = "Sheet1!A:H"; // contoh 8 kolom
+const RANGE = "Reguler!A:H"; // contoh 8 kolom
 
 export async function POST(req: Request) {
   try {
@@ -19,14 +20,31 @@ export async function POST(req: Request) {
       auth,
     });
 
+    const inputName = String(body.name || "").trim();
+    const inputNoHp = String(body.phone || "").trim();
+
+    if (!inputName) {
+      return NextResponse.json(
+        { success: false, error: "Nama wajib diisi" },
+        { status: 400 }
+      );
+    }
+    if (!inputNoHp) {
+      return NextResponse.json(
+        { success: false, error: "Nomor HP wajib diisi" },
+        { status: 400 }
+      );
+    }
+
     // 1) ambil semua ID VIP yang ada di kolom A
     const readRes = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "Sheet1!A:A", // ganti "Sheet1" dengan nama tab yang benar
+      range: "Reguler!A:A", // ganti "Sheet1" dengan nama tab yang benar
     });
 
     const rows = readRes.data.values || [];
 
+    // Cek Kuota Reguler
     const regularCount = rows.slice(1).filter((row) => {
       const type = row[4];
       return String(type).toLowerCase() === "reguler";
@@ -62,18 +80,73 @@ export async function POST(req: Request) {
       email: body.email,
       phone: body.phone,
       company: body.company,
-      ticketType: "reguler" as const,
+      type: "reguler" as const,
     };
 
+    // Generate Url Ticket
+    function encodeTicketPayload(data: any) {
+      const json = JSON.stringify(data);
+      // browser-safe base64 (URL-safe)
+      const b64 = btoa(json)
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/g, "");
+      return b64;
+    }
+
+    const payload = {
+      id: data.id,
+      name: body.name,
+      email: body.email,
+      phone: body.phone,
+      type: "reguler",
+      company: body.company,
+    };
+
+    const encoded = encodeTicketPayload(payload);
+    const ticketUrl = `${baseUrl}/ticket?d=${encoded}`;
+
+    const message =
+      "Yth. Bapak/Ibu " +
+      data.name +
+      ",\n\n" +
+      "Terima kasih atas pembelian tiket National Sugar Summit 2025.\n\n" +
+      "Berikut adalah link e-ticket Anda:\n" +
+      ticketUrl +
+      "\n\n" +
+      "Silakan menyimpan e-ticket tersebut dan menunjukkannya kepada petugas saat memasuki area acara.\n\n" +
+      "Salam hormat,\n" +
+      "Panitia National Sugar Summit 2025";
+
+    const waLink = `https://wa.me/${data.phone.replace(
+      /^0/,
+      "62"
+    )}?text=${encodeURIComponent(message)}`;
+
     // 3) append row dengan ID baru (tidak duplikat karena cek maxNum)
-    // await sheets.spreadsheets.values.append({
-    //   spreadsheetId: SHEET_ID,
-    //   range: RANGE,
-    //   valueInputOption: "USER_ENTERED",
-    //   requestBody: {
-    //     values: [[data.id, data.name, data.email, data.phone, data.ticketType]],
-    //   },
-    // });
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: RANGE,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [
+          [
+            data.id,
+            data.name,
+            data.email,
+            data.phone,
+            data.type,
+            new Date().toISOString().split("T")[0],
+            "Belum Hadir",
+            "",
+            ticketUrl,
+            "",
+            data.company,
+            waLink,
+          ],
+        ],
+      },
+    });
 
     return NextResponse.json({ success: true, data });
   } catch (err) {
