@@ -8,7 +8,6 @@ import { generateQrDataUrl } from "./utils/generateQrDataUrl";
 import { saveToGoogleSheets } from "./actions/saveToSheet";
 import * as htmlToImage from "html-to-image";
 import { updateAttendanceStatus } from "./actions/updateAttendance";
-import { deleteVipRegistration } from "./api/delete-vip/route";
 
 type PageShellProps = {
   type: TicketType;
@@ -414,14 +413,19 @@ export default function PageShell({ type }: PageShellProps) {
                     setWillAttend(false);
                     setIsPreparingTicket(false);
                   } else {
-                    const res = await deleteVipRegistration(
-                      String(registrationData.id)
-                    );
+                    const res = await fetch("/api/delete-vip", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ id: String(registrationData.id) }),
+                    });
 
-                    if (!res.success) {
-                      setError(res.error || "Gagal delete data VIP");
+                    const json = await res.json();
+
+                    if (!json.success) {
+                      setError(json.error || "Gagal delete data VIP");
                       return;
                     }
+                    setIsPreparingTicket(false);
                     setShowVipConfirm(false);
                     setRegistrationData(null);
                   }

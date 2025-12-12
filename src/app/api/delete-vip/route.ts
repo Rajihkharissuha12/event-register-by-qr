@@ -1,8 +1,7 @@
-"use server";
-
+import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 
-export async function deleteVipRegistration(registrationId: string) {
+export async function POST(req: NextRequest) {
   try {
     const auth = new google.auth.JWT({
       email: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
@@ -10,12 +9,20 @@ export async function deleteVipRegistration(registrationId: string) {
       scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     });
 
+    const body = (await req.json()) as { id?: string };
+
+    if (!body.id) {
+      return NextResponse.json(
+        { success: false, error: "ID wajib diisi" },
+        { status: 400 }
+      );
+    }
+
     const sheets = google.sheets({ version: "v4", auth });
 
-    // 1) Ambil semua data VIP
     const getResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "Vip!A:K", // sama seperti yang kamu pakai di updateAttendanceStatus
+      range: "Vip!A:L",
     });
 
     const normalizeId = (id: string) => String(Number(id));
@@ -24,39 +31,41 @@ export async function deleteVipRegistration(registrationId: string) {
     let rowIndex = -1;
 
     for (let i = 0; i < rows.length; i++) {
-      const sheetId = rows[i][0]; // kolom A
+      const sheetId = rows[i][0];
       if (!sheetId) continue;
 
-      if (normalizeId(sheetId) === normalizeId(registrationId)) {
-        rowIndex = i + 1; // 1-based index di Sheets
+      if (normalizeId(sheetId) === normalizeId(body.id)) {
+        rowIndex = i + 1; // 1-based
         break;
       }
     }
 
     if (rowIndex === -1) {
-      return {
-        success: false,
-        error: "Registration ID VIP tidak ditemukan",
-      };
+      return NextResponse.json(
+        { success: false, error: "Registration ID VIP tidak ditemukan" },
+        { status: 404 }
+      );
     }
 
-    // 2) Clear isi row (A..K) → dianggap “hapus”
     await sheets.spreadsheets.values.clear({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
       range: `Vip!A${rowIndex}:K${rowIndex}`,
     });
 
-    return {
-      success: true,
-      data: {
-        deletedRow: rowIndex,
-        id: registrationId,
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          deletedRow: rowIndex,
+          id: body.id,
+        },
       },
-    };
+      { status: 200 }
+    );
   } catch (error) {
-    return {
-      success: false,
-      error: "Gagal menghapus data VIP",
-    };
+    return NextResponse.json(
+      { success: false, error: "Gagal menghapus data VIP" },
+      { status: 500 }
+    );
   }
 }
