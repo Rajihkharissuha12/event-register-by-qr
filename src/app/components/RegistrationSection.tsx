@@ -139,9 +139,7 @@ export default function RegistrationSection({
             // console.info("=================================");
 
             // Tampilkan alert dengan link
-            setError(
-              `Pembayaran pending!\n\nSimpan link berikut untuk melanjutkan pembayaran:\n${data.redirectUrl}`
-            );
+            setError("Pembayaran pending! Silakan ulangi pembelian.");
           },
           onError: (result: MidtransResult) => {
             // console.info("❌ Payment Error:", result);
@@ -155,24 +153,7 @@ export default function RegistrationSection({
             // console.info("=================================");
 
             // Optional: Tampilkan modal dengan link pembayaran
-            const continuePayment = confirm(
-              `Pembayaran belum selesai.\n\nKlik OK untuk menyalin link pembayaran, atau Cancel untuk menutup.`
-            );
-
-            if (continuePayment && data.redirectUrl) {
-              // Copy ke clipboard
-              navigator.clipboard
-                .writeText(data.redirectUrl)
-                .then(() => {
-                  alert(
-                    "Link pembayaran berhasil disalin!\n\nBuka link tersebut untuk melanjutkan pembayaran."
-                  );
-                })
-                .catch(() => {
-                  // Fallback jika clipboard tidak tersedia
-                  prompt("Salin link pembayaran berikut:", data.redirectUrl);
-                });
-            }
+            setError("Pembayaran belum selesai. Silakan coba lagi.");
 
             setIsLoading(false);
           },
@@ -503,12 +484,12 @@ function TicketCard({ onBuyClick, regularCount, maxRegular }: TicketCardProps) {
               <p className="text-xs text-slate-500 uppercase">Harga Tiket</p>
               <p className="text-3xl font-bold text-slate-900">Rp 300.000</p>
             </div>
-            <div className="text-right">
+            {/* <div className="text-right">
               <p className="text-xs text-slate-500">Kuota tersisa</p>
               <p className="text-lg font-bold text-amber-600">
                 {remaining} / {maxRegular}
               </p>
-            </div>
+            </div> */}
           </div>
           <button
             type="button"
