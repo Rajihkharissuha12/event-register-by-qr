@@ -7,9 +7,9 @@ export async function POST(
 ): Promise<NextResponse<PaymentResponse>> {
   try {
     const body: PaymentRequest = await request.json();
-    const { ticketType, name, email, phone, amount } = body;
+    const { ticketType, name, email, phone, amount, company } = body;
 
-    if (!ticketType || !name || !email || !phone || !amount) {
+    if (!ticketType || !name || !email || !phone || !amount || !company) {
       return NextResponse.json(
         { success: false, error: "Data tidak lengkap" },
         { status: 400 }
@@ -47,6 +47,7 @@ export async function POST(
         first_name: name,
         email: email,
         phone: phone,
+        company: company,
       },
     };
 

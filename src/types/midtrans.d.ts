@@ -81,6 +81,7 @@ export interface PaymentRequest {
   email: string;
   phone: string;
   amount: number;
+  company: string;
 }
 
 export interface PaymentResponse {
