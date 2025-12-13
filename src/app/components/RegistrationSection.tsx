@@ -626,7 +626,7 @@ function VipForm({
     <div className="bg-white rounded-xl shadow-2xl overflow-hidden">
       <div className="bg-gradient-to-r from-amber-500 to-amber-400 p-6 text-center">
         <p className="text-amber-900 text-xs font-semibold tracking-widest mb-1">
-          VIP ACCESS
+          SPONSOR ACCESS
         </p>
         <h3 className="text-2xl font-bold text-slate-900">Form Pendaftaran</h3>
       </div>
@@ -692,7 +692,7 @@ function VipForm({
 
           <SubmitButton
             isLoading={isLoading}
-            text="Daftar VIP"
+            text="Daftar Sponsor"
             className="bg-amber-500 hover:bg-amber-600 text-slate-900"
           />
         </form>

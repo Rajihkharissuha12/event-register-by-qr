@@ -268,7 +268,7 @@ export default function PageShell({ type }: PageShellProps) {
               </svg>
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-3">
-              Konfirmasi Kehadiran VIP
+              Konfirmasi Kehadiran Sponsor
             </h2>
             <p className="text-slate-600 text-lg max-w-md mx-auto">
               Harap konfirmasi kehadiran Anda untuk mendapatkan tiket QR
@@ -278,7 +278,7 @@ export default function PageShell({ type }: PageShellProps) {
           {/* VIP Package Info */}
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-4 border-amber-500 rounded-2xl p-8 mb-10">
             <p className="text-xs font-bold text-amber-800 mb-6 uppercase tracking-wider text-center">
-              Detail Paket VIP
+              Detail Paket Sponsor
             </p>
 
             <div className="grid md:grid-cols-2 gap-6 mb-8">
@@ -338,7 +338,7 @@ export default function PageShell({ type }: PageShellProps) {
                   clipRule="evenodd"
                 />
               </svg>
-              Benefit VIP yang Anda Dapatkan
+              Benefit Sponsor yang Anda Dapatkan
             </p>
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               {[
@@ -519,7 +519,9 @@ export default function PageShell({ type }: PageShellProps) {
             <div className="space-y-3">
               <div className="flex justify-between items-center border-b border-slate-200 pb-2">
                 <span className="text-sm font-semibold text-slate-600">
-                  ID Peserta:
+                  {registrationData?.type === "VIP"
+                    ? "ID Peserta:"
+                    : "ID Sponsor:"}
                 </span>
                 <span className="text-sm text-slate-900 font-mono">
                   {registrationData?.id}

@@ -117,7 +117,9 @@ export default function TicketPageClient() {
           <div className="space-y-3">
             <div className="flex justify-between items-center border-b border-slate-200 pb-2">
               <span className="text-sm font-semibold text-slate-600">
-                ID Peserta:
+                {registrationData?.type === "VIP"
+                  ? "ID Peserta:"
+                  : "ID Sponsor:"}
               </span>
               <span className="text-sm text-slate-900 font-mono">
                 {registrationData.id}
