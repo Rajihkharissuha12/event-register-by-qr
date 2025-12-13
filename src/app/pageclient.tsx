@@ -341,7 +341,12 @@ export default function PageShell({ type }: PageShellProps) {
               Benefit VIP yang Anda Dapatkan
             </p>
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              {["ID card", "Kupon", "Goodie Bag"].map((benefit, idx) => (
+              {[
+                "ID Card untuk akses keseluruh konferensi",
+                "Kupon Lunch Break",
+                "Goodie Bag Eksklusif NSS 2025",
+                "Peluang Doorprize",
+              ].map((benefit, idx) => (
                 <li
                   key={idx}
                   className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200"
