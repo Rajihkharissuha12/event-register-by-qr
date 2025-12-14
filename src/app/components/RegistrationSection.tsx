@@ -504,7 +504,7 @@ function TicketCard({ onBuyClick, regularCount, maxRegular }: TicketCardProps) {
     "Coffee break dan lunch break",
     "Akses ke exhibition & booth expo",
   ];
-  const isFull = regularCount >= maxRegular;
+  const isFull = 50 >= maxRegular;
   const remaining = Math.max(maxRegular - regularCount, 0);
 
   return (
@@ -592,7 +592,7 @@ function TicketCard({ onBuyClick, regularCount, maxRegular }: TicketCardProps) {
                 : "bg-slate-900 hover:bg-slate-800 text-white"
             }`}
           >
-            {isFull ? "Kuota Penuh" : "Beli Tiket Sekarang"}
+            {"Pendaftaran di Tutup"}
           </button>
         </div>
       </div>
